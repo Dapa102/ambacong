@@ -37,6 +37,7 @@ Terdapat kekurangan game horror bertema Indonesia yang berkualitas di platform w
 - Sistem Achievement dan Leaderboard.
 - Porting ke perangkat Mobile (Touch Controls).
 - Lokalisasi bahasa lain (English).
+- **Migrasi ke Game Engine (Unity/Godot)** untuk rilis native PC/Konsol (Detail lihat `next_development.md`).
 
 ## 8. Batasan & Risiko
 - **Limitasi Browser**: Keterbatasan dalam penggunaan Memory dan GPU rendering dibandingkan dengan native app.
