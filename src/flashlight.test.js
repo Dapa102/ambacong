@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Object3D, PerspectiveCamera, Vector3 } from 'three';
-import { aimForward } from './flashlight.js';
+import { aimForward, drainBattery } from './flashlight.js';
 
 test('flashlight target stays on the camera center ray', () => {
   const camera = new PerspectiveCamera();
@@ -15,4 +15,9 @@ test('flashlight target stays on the camera center ray', () => {
   const targetDirection = target.position.clone().sub(camera.position).normalize();
   assert.ok(targetDirection.distanceTo(direction) < 1e-12);
   assert.ok(Math.abs(target.position.distanceTo(camera.position) - 14) < 1e-12);
+});
+
+test('battery drains at configured rate without going negative', () => {
+  assert.equal(drainBattery(100, 1, 2), 98);
+  assert.equal(drainBattery(1, 1, 2), 0);
 });

@@ -1,9 +1,12 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { moveToward } from './chase.js';
-import { aimForward } from './flashlight.js';
+import { aimForward, drainBattery } from './flashlight.js';
 import { readMovement } from './movement.js';
 import { advanceProgress } from './progress.js';
+
+// ponytail: tune playtime here; add battery pickups only after drain feels fair.
+const BATTERY_DRAIN_PER_SECOND = 2;
 
 const init = () => {
   const container = document.getElementById('app');
@@ -88,7 +91,16 @@ const init = () => {
   let progress = 'start';
   let target = null;
   let gameOver = false;
+  let battery = 100;
+  let displayedBattery = 100;
   raycaster.far = 2;
+
+  const updateFlashlightStatus = () => {
+    flashlightStatus.textContent =
+      battery === 0
+        ? 'Senter: Habis'
+        : `Senter: ${flashlight.visible ? 'Nyala' : 'Mati'} ${displayedBattery}%`;
+  };
 
   const interact = () => {
     if (!target) return;
@@ -132,8 +144,8 @@ const init = () => {
     keys.add(code);
     if (code === 'KeyE' && !repeat && controls.isLocked) interact();
     if (code === 'KeyF' && !repeat && controls.isLocked) {
-      flashlight.visible = !flashlight.visible;
-      flashlightStatus.textContent = `Senter: ${flashlight.visible ? 'Nyala' : 'Mati'}`;
+      if (battery > 0) flashlight.visible = !flashlight.visible;
+      updateFlashlightStatus();
     }
   });
   window.addEventListener('keyup', ({ code }) => keys.delete(code));
@@ -166,6 +178,16 @@ const init = () => {
         const distance = moveToward(enemy.position, camera.position, 2 * delta);
         enemy.lookAt(camera.position.x, enemy.position.y, camera.position.z);
         if (!gameOver && distance < 0.7) endGame();
+      }
+
+      if (flashlight.visible) {
+        battery = drainBattery(battery, delta, BATTERY_DRAIN_PER_SECOND);
+        const batteryPercent = Math.ceil(battery);
+        if (batteryPercent !== displayedBattery) {
+          displayedBattery = batteryPercent;
+          if (battery === 0) flashlight.visible = false;
+          updateFlashlightStatus();
+        }
       }
     }
 
