@@ -53,6 +53,27 @@ canvas {
   background: rgb(255 255 255 / 70%);
 }
 
+#objective,
+#interaction-prompt {
+  position: absolute;
+  display: none;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  background: rgb(0 0 0 / 70%);
+}
+
+#objective {
+  top: 1rem;
+  left: 1rem;
+}
+
+#interaction-prompt {
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 #ui-layer.playing {
   pointer-events: none;
   background: transparent;
@@ -63,5 +84,10 @@ canvas {
 }
 
 #ui-layer.playing #crosshair {
+  display: block;
+}
+
+#ui-layer.playing #objective,
+#ui-layer.playing #interaction-prompt:not(:empty) {
   display: block;
 }
