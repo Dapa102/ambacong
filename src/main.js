@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { moveToward } from './chase.js';
 import { readMovement } from './movement.js';
 import { advanceProgress } from './progress.js';
 
@@ -7,6 +8,8 @@ const init = () => {
   const container = document.getElementById('app');
   const uiLayer = document.getElementById('ui-layer');
   const startButton = document.getElementById('start-button');
+  const screenTitle = document.getElementById('screen-title');
+  const screenHelp = document.getElementById('screen-help');
   const objective = document.getElementById('objective');
   const prompt = document.getElementById('interaction-prompt');
 
@@ -59,7 +62,14 @@ const init = () => {
   );
   door.position.set(0, 1.25, -9.85);
   door.userData.action = 'door';
-  scene.add(key, door);
+
+  const enemy = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.45, 1.1, 4, 8),
+    new THREE.MeshLambertMaterial({ color: 0xc8c7b7 })
+  );
+  enemy.position.set(-6, 1, -4);
+  enemy.visible = false;
+  scene.add(key, door, enemy);
 
   const controls = new PointerLockControls(camera, renderer.domElement);
   const keys = new Set();
@@ -70,6 +80,7 @@ const init = () => {
   const clock = new THREE.Clock();
   let progress = 'start';
   let target = null;
+  let gameOver = false;
   raycaster.far = 2;
 
   const interact = () => {
@@ -87,9 +98,21 @@ const init = () => {
     target = null;
     prompt.textContent = '';
     objective.textContent = progress === 'key' ? 'Buka pintu keluar.' : 'Demo selesai.';
+    enemy.visible = progress === 'key';
   };
 
-  startButton.addEventListener('click', () => controls.lock());
+  const endGame = () => {
+    gameOver = true;
+    screenTitle.textContent = 'Game Over';
+    screenHelp.textContent = 'Pocong menangkapmu.';
+    startButton.textContent = 'Ulangi';
+    controls.unlock();
+  };
+
+  startButton.addEventListener('click', () => {
+    if (gameOver) window.location.reload();
+    else controls.lock();
+  });
   controls.addEventListener('lock', () => uiLayer.classList.add('playing'));
   controls.addEventListener('unlock', () => {
     keys.clear();
@@ -127,6 +150,12 @@ const init = () => {
       prompt.textContent = target
         ? `E — ${target.userData.action === 'key' ? 'Ambil kunci' : 'Buka pintu'}`
         : '';
+
+      if (progress === 'key') {
+        const distance = moveToward(enemy.position, camera.position, 2 * delta);
+        enemy.lookAt(camera.position.x, enemy.position.y, camera.position.z);
+        if (!gameOver && distance < 0.7) endGame();
+      }
     }
 
     renderer.render(scene, camera);
