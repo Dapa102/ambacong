@@ -191,7 +191,7 @@ const init = () => {
       }
     }
 
-    aimForward(camera, flashlight.target, 14, flashlightDirection);
+    aimForward(camera, flashlight, 14, flashlightDirection);
 
     renderer.render(scene, camera);
   };
