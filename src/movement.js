@@ -5,3 +5,6 @@ export const readMovement = (keys, target) =>
       Number(keys.has('KeyW')) - Number(keys.has('KeyS'))
     )
     .normalize();
+
+export const updateStamina = (stamina, delta, sprinting, drainRate, recoveryRate) =>
+  Math.min(100, Math.max(0, stamina + delta * (sprinting ? -drainRate : recoveryRate)));

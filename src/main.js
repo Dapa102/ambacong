@@ -2,11 +2,16 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { moveToward } from './chase.js';
 import { aimForward, drainBattery } from './flashlight.js';
-import { readMovement } from './movement.js';
+import { readMovement, updateStamina } from './movement.js';
 import { advanceProgress } from './progress.js';
 
 // ponytail: tune playtime here; add battery pickups only after drain feels fair.
 const BATTERY_DRAIN_PER_SECOND = 2;
+// ponytail: tune sprint feel here; add upgrades only after chase pacing is proven.
+const WALK_SPEED = 4;
+const SPRINT_SPEED = 7;
+const STAMINA_DRAIN_PER_SECOND = 20;
+const STAMINA_RECOVERY_PER_SECOND = 12;
 
 const init = () => {
   const container = document.getElementById('app');
@@ -17,6 +22,7 @@ const init = () => {
   const objective = document.getElementById('objective');
   const prompt = document.getElementById('interaction-prompt');
   const flashlightStatus = document.getElementById('flashlight-status');
+  const staminaStatus = document.getElementById('stamina-status');
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x111114);
@@ -93,6 +99,9 @@ const init = () => {
   let gameOver = false;
   let battery = 100;
   let displayedBattery = 100;
+  let stamina = 100;
+  let displayedStamina = 100;
+  let exhausted = false;
   raycaster.far = 2;
 
   const updateFlashlightStatus = () => {
@@ -156,8 +165,26 @@ const init = () => {
     const delta = Math.min(clock.getDelta(), 0.05);
     if (controls.isLocked) {
       readMovement(keys, direction);
-      controls.moveRight(direction.x * 4 * delta);
-      controls.moveForward(direction.y * 4 * delta);
+      const wantsSprint = keys.has('ShiftLeft') || keys.has('ShiftRight');
+      if (!wantsSprint) exhausted = false;
+      const sprinting = wantsSprint && direction.lengthSq() > 0 && !exhausted;
+      const speed = sprinting ? SPRINT_SPEED : WALK_SPEED;
+      controls.moveRight(direction.x * speed * delta);
+      controls.moveForward(direction.y * speed * delta);
+
+      stamina = updateStamina(
+        stamina,
+        delta,
+        sprinting,
+        STAMINA_DRAIN_PER_SECOND,
+        STAMINA_RECOVERY_PER_SECOND
+      );
+      if (stamina === 0) exhausted = true;
+      const staminaPercent = Math.ceil(stamina);
+      if (staminaPercent !== displayedStamina) {
+        displayedStamina = staminaPercent;
+        staminaStatus.textContent = `Stamina: ${displayedStamina}%`;
+      }
 
       // ponytail: room clamp only; replace with raycast/AABB when obstacles need collision.
       camera.position.x = THREE.MathUtils.clamp(camera.position.x, -9.5, 9.5);

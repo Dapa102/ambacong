@@ -55,7 +55,8 @@ canvas {
 
 #objective,
 #interaction-prompt,
-#flashlight-status {
+#flashlight-status,
+#stamina-status {
   position: absolute;
   display: none;
   margin: 0;
@@ -80,6 +81,11 @@ canvas {
   right: 1rem;
 }
 
+#stamina-status {
+  top: 4rem;
+  right: 1rem;
+}
+
 #ui-layer.playing {
   pointer-events: none;
   background: transparent;
@@ -95,6 +101,7 @@ canvas {
 
 #ui-layer.playing #objective,
 #ui-layer.playing #flashlight-status,
+#ui-layer.playing #stamina-status,
 #ui-layer.playing #interaction-prompt:not(:empty) {
   display: block;
 }
