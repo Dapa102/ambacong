@@ -7,26 +7,15 @@
     <link rel="stylesheet" href="/src/styles/main.css" />
   </head>
   <body>
-    <div id="app">
-      <!-- Game Canvas akan di-inject ke sini oleh Three.js -->
-    </div>
+    <div id="app"></div>
 
-    <!-- UI Overlay Base -->
-    <div id="ui-layer" style="display: none">
+    <div id="ui-layer">
       <div id="crosshair"></div>
-
-      <!-- HUD Utama -->
-      <div id="hud-container">
-        <div id="health-bar-container">
-          <div id="health-bar" style="width: 100%"></div>
-        </div>
-        <div id="stamina-bar-container">
-          <div id="stamina-bar" style="width: 100%"></div>
-        </div>
-        <div id="flashlight-indicator">🔋 100%</div>
+      <div id="instructions">
+        <h1>Ambacong</h1>
+        <p>WASD untuk bergerak, mouse untuk melihat, Esc untuk berhenti.</p>
+        <button id="start-button" type="button">Mulai</button>
       </div>
-
-      <div id="interaction-prompt" style="display: none">Tekan E untuk...</div>
     </div>
 
     <script type="module" src="/src/main.js"></script>
