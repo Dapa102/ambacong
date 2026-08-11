@@ -234,6 +234,18 @@ stateDiagram-v2
 - **Sound**: Radius lingkaran. Sprint pemain = radius besar, crouch = radius kecil
 - **Flashlight**: Jika senter diarahkan ke pocong, detection range meningkat 50%
 
+**Navigasi MVP:**
+- Map menyimpan waypoint graph statis yang mengikuti lorong dan pintu.
+- Patrol mengikuti rute waypoint yang sudah ditentukan.
+- Chase memakai A* menuju waypoint terdekat dari posisi terakhir pemain.
+- Path dihitung ulang hanya saat target waypoint berubah atau jalur terputus.
+- Navmesh dan physics engine penuh tidak digunakan pada vertical slice.
+
+**Hiding:**
+- Interaksi dengan `hiding_spot` menandai pemain sebagai hidden.
+- Pemain hidden tidak dapat dideteksi sight atau sound.
+- Pocong yang sedang mengejar masuk state `lost`, menuju posisi terakhir pemain, lalu kembali patrol.
+
 ### 3.7 Input System
 
 Menangani keyboard, mouse, dan Pointer Lock API.
@@ -281,7 +293,8 @@ UI dirender menggunakan HTML/CSS overlay di atas canvas Three.js.
 |-------|-----|-----------|
 | `saves` | `slot` (1-3) | Data save game |
 | `settings` | `config` | Pengaturan pemain |
-| `achievements` | `id` | Achievement yang sudah didapat |
+
+Object store achievement ditunda sampai fitur masuk scope rilis.
 
 **Operasi:**
 - `saveGame(slot)` — Simpan GameState saat ini ke slot tertentu
@@ -290,6 +303,7 @@ UI dirender menggunakan HTML/CSS overlay di atas canvas Three.js.
 - `saveSettings(config)` — Simpan pengaturan
 - `loadSettings()` — Muat pengaturan
 - Auto-save saat masuk chapter baru
+- Validasi `schemaVersion` sebelum load; migrasikan versi lama atau tampilkan pesan save tidak didukung
 
 ### 3.10 Asset Manager
 
@@ -400,7 +414,7 @@ main.js
 
 ### Development
 ```bash
-npm install        # Install dependencies
+npm ci             # Install dependencies dari package-lock.json
 npm run dev        # Start Vite dev server (HMR enabled)
 ```
 
@@ -414,21 +428,12 @@ npm run preview    # Preview production build
 ```javascript
 // vite.config.js
 import { defineConfig } from 'vite';
+import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
-  root: './',
-  publicDir: 'assets',
-  build: {
-    outDir: 'dist',
-    assetsDir: 'assets',
-    sourcemap: false,
-    minify: 'terser',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          three: ['three'],
-        },
-      },
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   server: {

@@ -59,7 +59,6 @@ Pocong mengenakan kain kafan putih yang kusam dan kotor. Wajah pucat kehijauan d
 | `hop` | Lompat-lompat pelan saat berpatroli, mendarat dengan sedikit impact | 1.5 m/s |
 | `chase` | Lompat cepat dan agresif mengejar pemain, pose condong ke depan | 4.0 m/s |
 | `attack` | Jumpscare close-up ke wajah pemain, mulut terbuka lebar, mata menyala | 0 m/s |
-| `peek` | Mengintip perlahan dari balik objek/tembok, hanya separuh wajah terlihat | 0 m/s |
 | `lost` | Berhenti, menoleh kiri-kanan mencari pemain, lalu berbalik pelan | 2.0 m/s |
 
 ### Variasi Pocong per Chapter
