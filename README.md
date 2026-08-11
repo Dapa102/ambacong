@@ -6,8 +6,8 @@ Game horror 3D first-person berbasis browser dengan tema folklore Indonesia. Ver
 
 - Three.js
 - Vite
-- Web Audio API
-- IndexedDB
+- Web Audio API (direncanakan)
+- IndexedDB (direncanakan)
 
 ## Requirements
 
@@ -27,6 +27,7 @@ npm run dev
 - `npm run dev` — development server
 - `npm run build` — production build
 - `npm run preview` — preview production build
+- `npm test` — unit test logika gameplay
 - `npm run lint` — pemeriksaan ESLint
 - `npm run format` — formatting Prettier
 - `npm run format:check` — pemeriksaan formatting
@@ -38,6 +39,7 @@ npm run dev
 - [Arsitektur](docs/architecture.md)
 - [Desain](docs/design.md)
 - [Rencana implementasi](docs/implementation_plan.md)
+- [Progres pengembangan](docs/progress.md)
 - [Aturan proyek](docs/rules.md)
 - [Skema data](docs/schema.md)
 
