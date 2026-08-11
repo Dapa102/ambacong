@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { moveToward } from './chase.js';
+import { aimForward } from './flashlight.js';
 import { readMovement } from './movement.js';
 import { advanceProgress } from './progress.js';
 
@@ -12,6 +13,7 @@ const init = () => {
   const screenHelp = document.getElementById('screen-help');
   const objective = document.getElementById('objective');
   const prompt = document.getElementById('interaction-prompt');
+  const flashlightStatus = document.getElementById('flashlight-status');
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x111114);
@@ -20,12 +22,17 @@ const init = () => {
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 30);
   camera.position.set(0, 1.7, 5);
 
+  const flashlight = new THREE.SpotLight(0xfff4dd, 60, 14, Math.PI / 12, 0.4, 1.5);
+  const flashlightDirection = new THREE.Vector3();
+  camera.add(flashlight);
+  scene.add(camera, flashlight.target);
+
   const renderer = new THREE.WebGLRenderer({ antialias: false });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.appendChild(renderer.domElement);
 
-  scene.add(new THREE.HemisphereLight(0xb0b8c8, 0x202028, 2));
+  scene.add(new THREE.HemisphereLight(0xb0b8c8, 0x202028, 0.15));
 
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(20, 20),
@@ -124,6 +131,10 @@ const init = () => {
   window.addEventListener('keydown', ({ code, repeat }) => {
     keys.add(code);
     if (code === 'KeyE' && !repeat && controls.isLocked) interact();
+    if (code === 'KeyF' && !repeat && controls.isLocked) {
+      flashlight.visible = !flashlight.visible;
+      flashlightStatus.textContent = `Senter: ${flashlight.visible ? 'Nyala' : 'Mati'}`;
+    }
   });
   window.addEventListener('keyup', ({ code }) => keys.delete(code));
 
@@ -157,6 +168,8 @@ const init = () => {
         if (!gameOver && distance < 0.7) endGame();
       }
     }
+
+    aimForward(camera, flashlight.target, 14, flashlightDirection);
 
     renderer.render(scene, camera);
   };

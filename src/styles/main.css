@@ -54,7 +54,8 @@ canvas {
 }
 
 #objective,
-#interaction-prompt {
+#interaction-prompt,
+#flashlight-status {
   position: absolute;
   display: none;
   margin: 0;
@@ -74,6 +75,11 @@ canvas {
   transform: translateX(-50%);
 }
 
+#flashlight-status {
+  top: 1rem;
+  right: 1rem;
+}
+
 #ui-layer.playing {
   pointer-events: none;
   background: transparent;
@@ -88,6 +94,7 @@ canvas {
 }
 
 #ui-layer.playing #objective,
+#ui-layer.playing #flashlight-status,
 #ui-layer.playing #interaction-prompt:not(:empty) {
   display: block;
 }
