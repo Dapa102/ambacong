@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createChapterScenes, updateHospitalEffects } from './chapter-one-assets.js';
+import ambacongFaceUrl from '../assets/ambacong.png';
 import { InputSystem } from './core/input-system.js';
 import { StateMachine } from './core/state-machine.js';
 import { SaveSystem, SAVE_SLOT } from './systems/save-system.js';
@@ -154,6 +155,7 @@ scene.add(backLight);
 let kostLamp = null;
 let kostLampBulb = null;
 let kostLampOn = false;
+let tvOn = false;
 
 const applyLighting = () => {
   const hospitalMode = hospitalVisible;
@@ -167,7 +169,7 @@ const applyLighting = () => {
 };
 applyLighting();
 
-const flashlight = new THREE.SpotLight(0xc8d6ff, 0, 42, (34 * Math.PI) / 180, 0.55, 1.1);
+const flashlight = new THREE.SpotLight(0xc8d6ff, 0, 52, (36 * Math.PI) / 180, 0.55, 1.1);
 flashlight.castShadow = flashlightCastsShadow;
 flashlight.shadow.mapSize.set(512, 512);
 flashlight.shadow.bias = -0.0006;
@@ -176,7 +178,7 @@ flashlight.shadow.camera.far = 30;
 scene.add(flashlight);
 scene.add(flashlight.target);
 
-const chapters = createChapterScenes(scene, '/assets/ambacong.png');
+const chapters = createChapterScenes(scene, ambacongFaceUrl);
 scene.traverse((object) => {
   if (object.isMesh) {
     object.castShadow = true;
@@ -188,7 +190,7 @@ const enemy = chapters.enemy;
 kostLamp = chapters.prologue.lamp;
 kostLampBulb = chapters.prologue.lampBulb;
 
-const prologueColliders = buildColliders(prologue.group);
+let prologueColliders = buildColliders(prologue.group);
 const hospitalColliders = buildColliders(groups.hospital);
 
 const player = new Player(camera);
@@ -382,7 +384,8 @@ const saveGameState = () => ({
   progress: storyProgress,
   pocongWoken,
   unlockedExit,
-  kostLampOn,
+kostLampOn,
+  tvOn,
   createdAt: saveSystem.createdAt ?? Date.now(),
   timestamp: Date.now(),
   hospitalVisible,
@@ -417,6 +420,8 @@ const applyGameState = async (data) => {
   unlockedExit = Boolean(data.unlockedExit);
   pocongWoken = Boolean(data.pocongWoken);
   kostLampOn = Boolean(data.kostLampOn);
+  tvOn = Boolean(data.tvOn);
+  applyTvState();
 
   for (const item of chapters.interactables) {
     if (item.userData.itemId && collectedItems.has(keyRefFor(item, item.userData.itemId))) {
@@ -455,6 +460,7 @@ const applyGameState = async (data) => {
   }
 
   updateArea();
+  applyDoorStates();
   return true;
 };
 
@@ -509,6 +515,15 @@ const handleProloguePhone = () => {
 
 const leaveKost = async () => {
   if (storyPhase === 'outside' || storyPhase === 'inside') return;
+  if (!triggeredEvents.has('phone-answered')) {
+    showDialog([
+      {
+        speaker: '',
+        text: 'Kamu belum bisa keluar. Teleponmu masih berdering di atas meja — angkat dulu.',
+      },
+    ]);
+    return;
+  }
   overlays.showLoading('Berjalan menuju rumah sakit...');
   await sleep(700);
   switchToHospital();
@@ -654,6 +669,43 @@ const toggleKostLamp = () => {
   audio.play('pickup');
 };
 
+const applyTvState = () => {
+  const tv = prologue.group.getObjectByName('kost-tv');
+  if (!tv) return;
+  const screen = tv.userData.screen;
+  const glow = tv.userData.glow;
+  if (screen) screen.material = tvOn ? tv.userData.onMat : tv.userData.offMat;
+  if (glow) glow.intensity = tvOn ? 1.1 : 0;
+};
+
+const toggleTv = () => {
+  tvOn = !tvOn;
+  applyTvState();
+  audio.play('pickup');
+  attemptSave();
+};
+
+const applyDoorStates = () => {
+  const hinge = prologue.group.getObjectByName('bathroom-door-hinge');
+  if (hinge) {
+    hinge.rotation.y = openedDoors.has('bathroom-door') ? -Math.PI : -Math.PI / 2;
+  }
+  prologueColliders = buildColliders(prologue.group);
+  if (!hospitalVisible) activeColliders = prologueColliders;
+};
+
+const toggleBathroomDoor = () => {
+  const open = openedDoors.has('bathroom-door');
+  if (open) {
+    openedDoors.delete('bathroom-door');
+  } else {
+    openedDoors.add('bathroom-door');
+  }
+  applyDoorStates();
+  audio.play('pickup');
+  attemptSave();
+};
+
 const handleInteractable = async (item) => {
   const action = item.data.action;
   if (action === 'prologue-laptop') handlePrologueLaptop();
@@ -668,7 +720,9 @@ const handleInteractable = async (item) => {
   else if (action === 'inspect') inspect(item);
   else if (action === 'door') await tryExit();
   else if (action === 'exit') await tryExit();
+  else if (action === 'bathroom-door') toggleBathroomDoor();
   else if (action === 'light-switch') toggleKostLamp();
+  else if (action === 'tv-toggle') toggleTv();
 };
 
 const resetPrologueState = () => {
@@ -681,8 +735,11 @@ const resetPrologueState = () => {
   inventory.restore([]);
   flashlightBattery = 100;
   flashlightOn = true;
-  kostLampOn = false;
+kostLampOn = false;
+  tvOn = false;
+  applyTvState();
   applyLighting();
+  applyDoorStates();
   player.stamina = 100;
   switchToPrologue();
   player.teleport(prologue.spawn.x, prologue.spawn.z, Math.PI);
@@ -881,6 +938,18 @@ const updatePrompt = () => {
     if (item.data.action === 'light-switch') {
       prompt = kostLampOn ? 'Matikan lampu' : 'Nyalakan lampu';
     }
+    if (item.data.action === 'bathroom-door') {
+      prompt = openedDoors.has('bathroom-door')
+        ? 'Tutup pintu kamar mandi'
+        : 'Buka pintu kamar mandi';
+    }
+    if (item.data.action === 'tv-toggle') {
+      prompt = tvOn ? 'Matikan TV' : 'Nyalakan TV';
+    }
+    if (item.data.action === 'prologue-leave' && !triggeredEvents.has('phone-answered')) {
+      hud.setPrompt('');
+      return;
+    }
     if (item.data.requires && !inventory.has(item.data.requires)) {
       const info = ITEM_CATALOG[item.data.requires];
       prompt = `${prompt} — Butuh: ${info ? info.name : item.data.requires}`;
@@ -959,7 +1028,7 @@ const update = (delta) => {
     }
   }
   flashlight.visible = flashlightOn;
-  flashlight.intensity = flashlightOn ? 2.4 : 0;
+  flashlight.intensity = flashlightOn ? 4.2 : 0;
   if (flashlightOn) {
     aimForward(camera, flashlight, 16, cameraForward);
     flashlight.position.copy(camera.position);
@@ -1063,8 +1132,10 @@ const bootstrap = async () => {
       objective: () => objectiveForPhase(),
       has: (id) => inventory.has(id),
       lampOn: () => kostLampOn,
+      tvOn: () => tvOn,
       countBattery: () => inventory.count('battery'),
       hidden: () => player.hidden,
+      doorOpen: (id) => openedDoors.has(id),
       pocongVisible: () => enemy.visible,
       dialogOpen: () => overlays.isDialogOpen(),
       newsOpen: () => !document.getElementById('news-screen').hidden,

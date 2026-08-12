@@ -1,6 +1,6 @@
 # Progres Pengembangan Ambacong
 
-Snapshot: 12 Agustus 2026. Status saat ini: **vertical slice Chapter 1 lengkap dan lolos verifikasi otomatis browser end-to-end (31/31 cek)**.
+Snapshot: 12 Agustus 2026. Status saat ini: **vertical slice Chapter 1 lengkap dan lolos verifikasi otomatis browser end-to-end (38/38 cek)**.
 
 ## Alur yang Sudah Bisa Dimainkan
 
@@ -58,9 +58,9 @@ Snapshot: 12 Agustus 2026. Status saat ini: **vertical slice Chapter 1 lengkap d
 
 Unit test (`npm test`) melindungi logika: urutan kunci sebelum pintu, gerak diagonal, stamina 0–100, pocong mengejar, arah senter, baterai senter.
 
-Runtime test browser end-to-end (`npm run test:runtime`, headless Chrome + SwiftShader, tanpa dependency tambahan) menjalankan 31 cek dari menu sampai Chapter Complete:
+Runtime test browser end-to-end (`npm run test:runtime`, headless Chrome + SwiftShader, tanpa dependency tambahan) menjalankan 38 cek dari menu sampai Chapter Complete:
 
-- Alur penuh: new game → prologue (lampu/saklar toggle, laptop/telepon) → keluar kost → halaman rumah sakit → masuk pintu samping → lobby → peta/inventory toggle → baterai 1 → kunci janitor (pocong bangun) → hide/keluar loker → naik lantai 2 → baterai 2 → turun lantai 1 → pintu keluar (butuh kunci) → Chapter Complete → kembali ke menu.
+- Alur penuh: new game → prologue (lampu/saklar toggle, laptop/telepon) → keluar kost → halaman rumah sakit → masuk pintu samping → lobby → peta/inventory toggle → baterai 1 → kunci janitor (pocong bangun) → hide/keluar loker → naik lantai 2 → baterai 2 → turun lantai 1 → pintu keluar (butuh kunci) → Chapter Complete → kembali ke menu. Cek tambahan: pintu kost terkunci sebelum telepon diangkat (dialog peringatan), dan pintu kamar mandi bisa dibuka/tutup.
 - Memvalidasi state, fase cerita, nama ruang, pickup, physics gerak, dan fase lantai.
 - Driver dev: `src/dev/autotest.js`, diaktifkan via `?autotest=ch1`; hook DEV `window.__ambacong` di `main.js`.
 
@@ -90,3 +90,29 @@ Perintah: `npm test`, `npm run test:runtime`, `npm run lint`, `npm run format:ch
 - **Vignette**: lapisan radial-gradient gelap di tepi layar untuk atmosfer horror.
 - **Saklar lampu kost + lampu langit-langit**: lampu kamar kost kini hidup lewat saklar di dinding dekat pintu (`E` untuk toggle; prompt dinamis "Nyalakan/Matikan lampu"). Di langit-langit ada fitting lampu kasat mata (kabel, tudung, bohlam) — bohlam menyala (emissive) dan cahaya menerangi seluruh ruangan saat saklar on. Awal game lampu mati (kost gelap, senter membantu), state lampu ikut tersimpan di save.
 - **Kamar mandi & dapur di kost**: kost dibagi jadi kamar + kamar mandi (barat utara: kloset, wastafel) + dapur (barat selatan: meja masak, kompor, kulkas, rak bumbu) dengan dinding partisi berdinding pintu masuk tiap ruang. Ranjang dipindah ke sisi timur.
+
+## Update Terbaru (12 Agustus 2026 — sesi ini)
+
+- **Gerbang telepon (wajib dulu)**: pemain tidak bisa keluar kost sebelum mengangkat telepon Raka. Prompt/pintu keluar ("Pergi ke rumah sakit") baru muncul setelah dialog telepon selesai (`phone-answered`); jika `E` ditekan lebih dulu muncul dialog "Teleponmu masih berdering..." dan fase tidak berubah.
+- **Pintu kamar mandi bisa dibuka**: pintu kamar mandi kini interaktif (`E` toggle buka/tutup, prompt dinamis "Buka/Tutup pintu kamar mandi"). Engsel di tepi ambang; saat terbuka panel menywing masuk ke dalam kamar mandi dan collider AABB dibangun ulang (`buildColliders`) sehingga ruangan bisa dimasuki. State pintu tersimpan di save (`openedDoors`) dan disinkron ulang saat load.
+- **Senter lebih terang**: intensity 2.4 → 3.2, jarak cahaya 42 → 52 satuan.
+- **Runtime test diperluas**: 31 → 36 cek (tutup pintu kost sebelum telepon, dismiss dialog terkunci, buka/tutup pintu kamar mandi). Semua lolos: 36/36.
+- **Muka pocong pakai `assets/ambacong.png`**: tekstur muka kini benar-benar termuat — sebelumnya URL string `/assets/ambacong.png` (404, `public/` kosong sehingga tekstur gagal load). Fix: import aset lewat Vite (`import ambacongFaceUrl from '../assets/ambacong.png'`) lalu diteruskan ke `createPocong`. Plane muka diberi `side: DoubleSide` + `scale.z = -1` agar tampil dari arah hadap pocong tanpa mirror; gambar menu juga diarahkan ke src relatif supaya ikut dibundel Vite.
+- **Pocong loncat-loncat**: gerak hop diganti dari bob halus (amplitudo 0.16) menjadi loncatan nyata — siklus `(1-cos θ)/2` dengan amplitudo 0.6 (chase) / 0.45 (patrol), frekuensi hop 2.6/s saat mengejar. Ditambah squash-and-stretch vertikal (body memanjang di puncak, mengecil di lantai) supaya kesan "melompat mirip pocong" lebih hidup. `groundReset` ikut mereset skala.
+- **Semua SFX terpakai (3/3) memang direferensikan** — tapi ternyata tidak pernah berbunyi: path `/assets/audio/...` root-absolute 404 (public/ kosong), error ditelan `.catch`. Fix: seluruh audio (3 SFX + BGM) di-import via Vite di `audio-system.js` (`ambil-barang.wav`→pickup, `buka-inventori.wav`→inventory, `suara-hantu-dekat.wav`→ghostNear loop, `backsound-game.wav`→bgm) sehingga ikut ter-bundle.
+- **Catatan kinerja**: `backsound-game.wav` berukuran 98.9 MB (PCM 24-bit 48kHz, tidak terkompresi) → bikin bundle dist ~100 MB. Perlu dikonversi ke format terkompresi (ogg/mp3/opus) di langkah polish kedepan.
+
+## Konversi Audio Terkompresi (12 Agustus 2026 — sesi ini)
+
+- `backsound-game.wav` 98.9 MB (PCM 24-bit) → **`backsound-game.ogg` 5.5 MB** (Vorbis q5), durasi 360s dipertahankan (audio-system.js import `.ogg`).
+- `suara-hantu-dekat.wav` 2.1 MB → **`suara-hantu-dekat.ogg` 74 KB** (Vorbis q4) — turun ~28×.
+- File `.wav` lama dihapus; dua SFX kecil tetap `.wav` (13.8 KB dan 32.2 KB, tidak signifikan).
+- Bundle dist turun dari ~100 MB jadi **~5.8 MB** audio. Semua cek lolos: lint, unit 14/14, runtime 36/36.
+
+## Tata Ruang Kost Baru: Kamar Tidur + Ruang Tamu (12 Agustus 2026 — sesi ini)
+
+- **Kamar mandi & dapur terpisah lebih tegas**: divider ditebalkan (0.3) + frame pintu (header & jamb) tiap entri; entri kamar mandi dilebarin 1.5, entri dapur dilebarin 2.0. Toilet (pedestal, tank, seat ring, flush) & wastafel (kolom, basin, faucet, cermin glass) dibangun ulang dengan material `porcelain`.
+- **Kamar khusus player (kamar tidur)** di sisi timur-utara: kasur, **lemari** (carcass + 2 pintu + gagang), meja belajar + kursi, laptop & telepon pindah ke sini (belakang lampu meja).
+- **Ruang tamu** di sisi timur-selatan: **sofa 3 dudukan + backrest + armrest**, meja TV, dan **TV yang bisa ON/OFF** (`E`; prompt dinamis "Nyalakan/Matikan TV") — layar menyala emissive biru + glow light saat on, mati hitam saat off. State TV ikut tersimpan di save.
+- Pembatas kamar tidur/ruang tamu di z=-1.5 dengan bukaan pintu ber-frame (x 1.8..3.4). Aliran: kamar tidur → ruang tamu → (timur) TV & sofa, (barat) dapur; kamar mandi tetap di barat-utara.
+- Runtime test diperluas 36 → **38 cek** (TV on + TV off). Semua lolos: lint, unit 14/14, runtime 38/38.

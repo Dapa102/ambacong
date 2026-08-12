@@ -1,8 +1,13 @@
+import pickupUrl from '../../assets/audio/sfx/ambil-barang.wav';
+import inventoryUrl from '../../assets/audio/sfx/buka-inventori.wav';
+import ghostNearUrl from '../../assets/audio/sfx/suara-hantu-dekat.ogg';
+import bgmUrl from '../../assets/audio/music/backsound-game.ogg';
+
 const AUDIO_PATHS = {
-  pickup: '/assets/audio/sfx/ambil-barang.wav',
-  inventory: '/assets/audio/sfx/buka-inventori.wav',
-  ghostNear: '/assets/audio/sfx/suara-hantu-dekat.wav',
-  bgm: '/assets/audio/music/backsound-game.wav',
+  pickup: pickupUrl,
+  inventory: inventoryUrl,
+  ghostNear: ghostNearUrl,
+  bgm: bgmUrl,
 };
 
 export class AudioSystem {

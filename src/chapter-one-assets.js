@@ -112,6 +112,7 @@ const createMaterials = () => {
     dirt: standard(0x2d211c, { roughness: 1 }),
     door: standard(0x5a1715, { roughness: 0.7, metalness: 0.15 }),
     doorTrim: standard(0x241715, { roughness: 0.8 }),
+    glass: standard(0xbfd5d2, { roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.35 }),
     floor: textured(0x343438, textureGenerators.floor, 8),
     key: standard(0xd6a800, { emissive: 0x664400, roughness: 0.4, metalness: 0.7 }),
     laptop: standard(0x111117, { emissive: 0x02020a, roughness: 0.4, metalness: 0.5 }),
@@ -120,6 +121,7 @@ const createMaterials = () => {
     metal: standard(0x77756f, { roughness: 0.45, metalness: 0.7 }),
     neonTube: standard(0xb6ffd0, { emissive: 0x62c778, roughness: 0.4 }),
     paper: standard(0xd0c5a8, { roughness: 0.9 }),
+    porcelain: standard(0xf0ede5, { roughness: 0.32, metalness: 0.02 }),
     pocongCloth: standard(0x8b0000, { roughness: 0.85 }),
     pocongDirt: standard(0x211612, { roughness: 1 }),
     pocongEye: standard(0x050505, { roughness: 0.3 }),
@@ -388,9 +390,10 @@ const createPocong = (materials, position, imageUrl) => {
   texture.colorSpace = THREE.SRGBColorSpace;
   const face = new THREE.Mesh(
     new THREE.PlaneGeometry(0.56, 0.64),
-    new THREE.MeshBasicMaterial({ map: texture, color: 0xffffff })
+    new THREE.MeshBasicMaterial({ map: texture, color: 0xffffff, side: THREE.DoubleSide })
   );
   face.position.set(0, 1.78, -0.36);
+  face.scale.z = -1;
   pocong.add(face);
 
   const topTie = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.48, 7), materials.pocongCloth);
@@ -417,24 +420,56 @@ const createKostRoom = (materials) => {
   group.add(box(materials.ceiling, [0, 3.05, 0.5], [14, 0.08, 13]));
 
   wallRowX(materials, group, -1.2, ROOM_Z_BOTTOM, ROOM_Z_TOP, [
-    [1.6, 2.6],
-    [-3.6, -2.6],
+    [1.5, 3.0],
+    [-4.1, -2.1],
   ]);
-  box(materials.wall, [-4.1, 1.5, 0], [5.8, 3, 0.2]);
+  box(materials.wall, [-4.1, 1.5, 0], [6.0, 3.1, 0.3]);
 
-  group.add(box(materials.metal, [-5.9, 0.4, 3.0], [0.5, 0.8, 0.3]));
-  group.add(box(materials.plastic, [-5.9, 0.85, 3.0], [0.55, 0.12, 0.35]));
-  group.add(box(materials.metal, [-5.9, 1.02, 3.1], [0.08, 0.16, 0.08]));
-  group.add(box(materials.plastic, [-5.1, 0.35, 4.8], [0.5, 0.35, 0.45]));
-  group.add(box(materials.plastic, [-5.1, 0.58, 4.8], [0.45, 0.1, 0.42]));
-  group.add(box(materials.metal, [-5.1, 0.65, 5.12], [0.4, 0.5, 0.16]));
-  group.add(box(materials.doorTrim, [-1.2, 2.92, 2.1], [1.2, 0.16, 0.2]));
+  group.add(box(materials.doorTrim, [-1.2, 2.92, 2.25], [1.5, 0.16, 0.28]));
+  group.add(box(materials.doorTrim, [-1.2, 1.5, 1.5], [0.18, 3, 0.1]));
+  group.add(box(materials.doorTrim, [-1.2, 1.5, 3.0], [0.18, 3, 0.1]));
+  group.add(box(materials.doorTrim, [-1.2, 2.92, -3.1], [2.0, 0.16, 0.28]));
+  group.add(box(materials.doorTrim, [-1.2, 1.5, -4.1], [0.18, 3, 0.1]));
+  group.add(box(materials.doorTrim, [-1.2, 1.5, -2.1], [0.18, 3, 0.1]));
+
+  const toilet = new THREE.Group();
+  toilet.name = 'kost-toilet';
+  toilet.position.set(-5.7, 0, 2.5);
+  toilet.add(box(materials.porcelain, [0, 0.2, 0], [0.46, 0.4, 0.54]));
+  toilet.add(box(materials.porcelain, [0, 0.46, 0], [0.34, 0.1, 0.46]));
+  toilet.add(box(materials.porcelain, [0, 0.55, 0], [0.44, 0.08, 0.5]));
+  toilet.add(box(materials.plastic, [0.13, 0.55, 0], [0.2, 0.03, 0.42]));
+  toilet.add(box(materials.porcelain, [-0.26, 0.76, 0], [0.2, 0.44, 0.2]));
+  toilet.add(box(materials.porcelain, [-0.26, 0.98, 0], [0.24, 0.04, 0.22]));
+  toilet.add(box(materials.metal, [-0.26, 0.9, 0.15], [0.05, 0.12, 0.03]));
+  group.add(toilet);
+
+  const sink = new THREE.Group();
+  sink.name = 'kost-wastafel';
+  sink.position.set(-5.2, 0, 4.6);
+  sink.add(box(materials.porcelain, [0, 0.3, 0], [0.26, 0.6, 0.28]));
+  sink.add(box(materials.porcelain, [0, 0.78, 0], [0.52, 0.12, 0.42]));
+  sink.add(box(materials.dirt, [0, 0.7, 0], [0.4, 0.08, 0.32]));
+  sink.add(box(materials.metal, [0.17, 0.98, -0.02], [0.06, 0.24, 0.06]));
+  sink.add(box(materials.metal, [0.17, 1.04, 0.04], [0.06, 0.05, 0.16]));
+  sink.add(box(materials.metal, [0.17, 0.98, -0.13], [0.05, 0.05, 0.14]));
+  sink.add(box(materials.glass, [0, 1.16, -0.27], [0.5, 0.62, 0.03]));
+  group.add(sink);
+  const bathHinge = new THREE.Group();
+  bathHinge.name = 'bathroom-door-hinge';
+  bathHinge.position.set(-1.5, 0, 1.6);
+  bathHinge.rotation.y = -Math.PI / 2;
   const bathDoor = new THREE.Group();
-  bathDoor.position.set(-1.4, 0, 2.1);
-  bathDoor.rotation.y = -Math.PI / 2;
-  bathDoor.add(box(materials.door, [0, 1.2, 0], [0.9, 2.35, 0.08]));
-  bathDoor.add(box(materials.metal, [0, 1.2, 0.36], [0.08, 0.14, 0.08]));
-  group.add(bathDoor);
+  bathDoor.name = 'bathroom-door';
+  makeInteractable(bathDoor, {
+    action: 'bathroom-door',
+    prompt: 'Buka pintu kamar mandi',
+  });
+  bathDoor.add(box(materials.door, [0.675, 1.2, 0], [1.35, 2.35, 0.08]));
+  bathDoor.add(box(materials.metal, [0.675, 1.2, 0.36], [0.08, 0.14, 0.08]));
+  bathHinge.add(bathDoor);
+  group.add(bathHinge);
+  interactables.push(bathDoor);
 
   group.add(box(materials.wood, [-5.9, 0.45, -3.0], [0.6, 0.9, 3.5]));
   group.add(box(materials.desk, [-5.9, 0.95, -3.0], [0.68, 0.1, 3.6]));
@@ -442,19 +477,41 @@ const createKostRoom = (materials) => {
   group.add(box(materials.metal, [-5.4, 0.8, -1.8], [0.8, 1.6, 0.7]));
   group.add(box(materials.paper, [-5.9, 1.05, -2.5], [0.1, 0.3, 0.02]));
 
-  const bed = createBed(materials, [1.6, 0, 1.2], Math.PI / 2);
+  wall(materials, group, 0.35, -1.5, 2.9, 0.2);
+  wall(materials, group, 5.25, -1.5, 3.7, 0.2);
+  group.add(box(materials.doorTrim, [2.6, 2.92, -1.5], [1.8, 0.16, 0.28]));
+  group.add(box(materials.doorTrim, [1.8, 1.5, -1.5], [0.18, 3, 0.1]));
+  group.add(box(materials.doorTrim, [3.4, 1.5, -1.5], [0.18, 3, 0.1]));
+
+  const bed = createBed(materials, [1.7, 0, 1.6], Math.PI / 2);
+
+  const lemari = new THREE.Group();
+  lemari.name = 'kost-lemari';
+  lemari.position.set(6.45, 0, 0.4);
+  lemari.add(box(materials.wood, [0, 1.0, 0], [0.8, 2.0, 1.6]));
+  lemari.add(box(materials.wood, [0, 2.04, 0], [0.9, 0.08, 1.7]));
+  lemari.add(box(materials.wood, [0, 0.05, 0], [0.9, 0.1, 1.7]));
+  lemari.add(box(materials.wood, [0.38, 1.0, 0], [0.05, 2.0, 1.6]));
+  lemari.add(box(materials.wood, [-0.4, 1.0, 0.39], [0.04, 1.9, 0.76]));
+  lemari.add(box(materials.wood, [-0.4, 1.0, -0.39], [0.04, 1.9, 0.76]));
+  lemari.add(box(materials.metal, [-0.44, 1.2, 0.34], [0.05, 0.18, 0.05]));
+  lemari.add(box(materials.metal, [-0.44, 1.2, -0.34], [0.05, 0.18, 0.05]));
+  group.add(lemari);
+
   const desk = new THREE.Group();
-  desk.position.set(2.3, 0, -2.8);
-  desk.add(box(materials.desk, [0, 0.84, 0], [2.2, 0.12, 0.85]));
-  for (const legX of [-1.0, 1.0]) {
-    for (const legZ of [-0.36, 0.36]) {
-      desk.add(box(materials.wood, [legX, 0.42, legZ], [0.06, 0.84, 0.06]));
+  desk.name = 'kost-meja-belajar';
+  desk.position.set(4.6, 0, 4.4);
+  desk.add(box(materials.desk, [0, 0.84, 0], [1.9, 0.12, 0.8]));
+  for (const legX of [-0.85, 0.85]) {
+    for (const legZ of [-0.33, 0.33]) {
+      desk.add(box(materials.wood, [legX, 0.42, legZ], [0.07, 0.84, 0.07]));
     }
   }
-  const chair = createPlasticChair(materials, [2.35, 0, -1.65], 0);
+  const chair = createPlasticChair(materials, [4.6, 0, 3.3], 0);
+
   const laptop = new THREE.Group();
   laptop.name = 'laptop-horror-news';
-  laptop.position.set(2.35, 0.92, -2.83);
+  laptop.position.set(4.75, 0.92, 4.45);
   makeInteractable(laptop, {
     action: 'prologue-laptop',
     prompt: 'Baca laman web horror',
@@ -464,7 +521,7 @@ const createKostRoom = (materials) => {
 
   const phone = new THREE.Group();
   phone.name = 'phone-call';
-  phone.position.set(3.0, 0.9, -2.55);
+  phone.position.set(4.0, 0.9, 4.5);
   makeInteractable(phone, {
     action: 'prologue-phone',
     prompt: 'Angkat telepon teman',
@@ -491,6 +548,64 @@ const createKostRoom = (materials) => {
   lightSwitch.add(box(materials.plastic, [0, 0.04, 0.06], [0.2, 0.32, 0.05]));
   lightSwitch.add(box(materials.metal, [0, 0.1, 0.09], [0.08, 0.1, 0.03]));
 
+  const sofa = new THREE.Group();
+  sofa.name = 'kost-sofa';
+  sofa.position.set(2.8, 0, -3.8);
+  sofa.rotation.y = Math.PI / 2;
+  sofa.add(box(materials.wood, [0, 0.32, 0], [2.6, 0.5, 1.0]));
+  sofa.add(box(materials.wood, [0, 0.8, -0.36], [2.6, 0.85, 0.28]));
+  for (const sx of [-0.84, 0, 0.84]) {
+    sofa.add(box(materials.plastic, [sx, 0.52, 0], [0.74, 0.12, 0.86]));
+  }
+  sofa.add(box(materials.wood, [-1.3, 0.45, 0], [0.22, 0.6, 0.9]));
+  sofa.add(box(materials.wood, [1.3, 0.45, 0], [0.22, 0.6, 0.9]));
+  for (const [lx, lz] of [
+    [-1.12, 0.42],
+    [1.12, 0.42],
+    [-1.12, -0.42],
+    [1.12, -0.42],
+  ]) {
+    sofa.add(box(materials.wood, [lx, 0.05, lz], [0.08, 0.1, 0.08]));
+  }
+  group.add(sofa);
+
+  const tvScreenOff = new THREE.MeshStandardMaterial({ color: 0x0b0d10, roughness: 0.4 });
+  const tvScreenOn = new THREE.MeshStandardMaterial({
+    color: 0xcfe8ff,
+    emissive: 0xbfe4ff,
+    emissiveIntensity: 1.4,
+    roughness: 0.3,
+  });
+  const tv = new THREE.Group();
+  tv.name = 'kost-tv';
+  tv.position.set(6.2, 0, -3.6);
+  tv.rotation.y = -Math.PI / 2;
+  tv.add(box(materials.desk, [0, 0.55, 0], [1.5, 0.06, 0.45]));
+  for (const legX of [-0.68, 0.68]) {
+    for (const legZ of [-0.16, 0.16]) {
+      tv.add(box(materials.wood, [legX, 0.27, legZ], [0.08, 0.55, 0.08]));
+    }
+  }
+  tv.add(box(materials.metal, [0, 0.61, 0], [0.6, 0.06, 0.26]));
+  tv.add(box(materials.metal, [0, 0.78, 0], [0.1, 0.3, 0.1]));
+  tv.add(box(materials.metal, [0, 1.25, 0], [1.5, 0.9, 0.14]));
+  const tvScreen = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.78, 0.03), tvScreenOff);
+  tvScreen.position.set(0, 1.25, 0.075);
+  const tvGlow = new THREE.PointLight(0xaadcff, 0, 6);
+  tvGlow.position.set(0, 1.25, 1.0);
+  tv.add(tvScreen);
+  tv.add(tvGlow);
+  makeInteractable(tv, {
+    action: 'tv-toggle',
+    prompt: 'Nyalakan TV',
+  });
+  tv.userData.screen = tvScreen;
+  tv.userData.onMat = tvScreenOn;
+  tv.userData.offMat = tvScreenOff;
+  tv.userData.glow = tvGlow;
+  group.add(tv);
+  interactables.push(tv);
+
   const lampBulbMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     emissive: 0xffffff,
@@ -501,7 +616,7 @@ const createKostRoom = (materials) => {
   const lamp = new THREE.PointLight(0xffffff, 0, 20, 1);
   const lampFixture = new THREE.Group();
   lampFixture.name = 'kost-ceiling-lamp';
-  lampFixture.position.set(1.5, 2.96, 0.5);
+  lampFixture.position.set(3.2, 2.96, 2.8);
   lampFixture.add(box(materials.metal, [0, 0.06, 0], [0.04, 0.18, 0.04]));
   lampFixture.add(box(materials.metal, [0, -0.14, 0], [0.55, 0.1, 0.3]));
   lampFixture.add(box(lampBulbMaterial, [0, -0.24, 0], [0.36, 0.12, 0.22]));

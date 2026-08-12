@@ -122,10 +122,12 @@ export class Pocong {
   }
 
   animate(pos) {
-    const speed =
-      this.state === 'chase' ? 4.6 : this.state === 'patrol' || this.state === 'lost' ? 2.4 : 1.2;
-    const hop = Math.abs(Math.sin(this.phase * speed));
-    pos.y = hop * 0.16;
+    const hopAmp = this.state === 'chase' ? 0.6 : 0.45;
+    const hopFreq = this.state === 'chase' ? 2.6 : 1.8;
+    const theta = this.phase * hopFreq * Math.PI * 2;
+    pos.y = ((1 - Math.cos(theta)) / 2) * hopAmp;
+    const stretch = 1 + 0.12 * Math.sin(theta / 2);
+    this.mesh.scale.set(1 + (1 - stretch) * 0.5, stretch, 1 + (1 - stretch) * 0.5);
     const look = this.facing.clone();
     if (look.lengthSq() > 1e-6) {
       this.mesh.rotation.y = Math.atan2(look.x, look.z);
@@ -156,6 +158,7 @@ export class Pocong {
     this.state = 'dormant';
     this.mesh.visible = false;
     this.mesh.position.copy(this.basePosition);
+    this.mesh.scale.set(1, 1, 1);
     this.timer = 0;
   }
 }
