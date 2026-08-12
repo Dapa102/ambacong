@@ -33,7 +33,7 @@ export const runAutotest = async (g) => {
 
   assert(g.lampOn(), 'all four house lights stay on');
 
-  await g.aimAt(-0.4, 1.9, -1.5, 2.05, 1.2);
+  await g.aimAt(-0.35, 2.15, -1.18, 2.15, 1.15);
   await g.interact();
   await sleep(200);
   assert(g.doorOpen('bathroom-door'), 'bathroom door opens');
