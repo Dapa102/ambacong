@@ -152,19 +152,20 @@ const backLight = new THREE.DirectionalLight(0x3a4a5a, 0.35);
 backLight.position.set(-20, 10, -50);
 scene.add(backLight);
 
-let kostLamp = null;
+let kostLamps = [];
 let kostLampBulb = null;
-let kostLampOn = false;
 let tvOn = false;
 
 const applyLighting = () => {
   const hospitalMode = hospitalVisible;
-  const lampOn = !hospitalMode && kostLampOn;
-  ambientLight.intensity = hospitalMode ? 0.5 : kostLampOn ? 1.2 : 0.35;
-  hemisphereLight.intensity = hospitalMode ? 0.22 : kostLampOn ? 0.5 : 0.18;
+  const lampOn = !hospitalMode;
+  ambientLight.intensity = hospitalMode ? 0.5 : 0.75;
+  hemisphereLight.intensity = hospitalMode ? 0.22 : 0.32;
   moonLight.intensity = hospitalMode ? 0.7 : 0.22;
   backLight.intensity = hospitalMode ? 0.35 : 0.18;
-  if (kostLamp) kostLamp.intensity = lampOn ? 3.0 : 0;
+  for (const lamp of kostLamps) {
+    lamp.intensity = lampOn ? lamp.userData.baseIntensity : 0;
+  }
   if (kostLampBulb) kostLampBulb.emissiveIntensity = lampOn ? 2.6 : 0;
 };
 applyLighting();
@@ -187,8 +188,9 @@ scene.traverse((object) => {
 });
 const { groups, hospital, prologue, flickerLights } = chapters;
 const enemy = chapters.enemy;
-kostLamp = chapters.prologue.lamp;
+kostLamps = chapters.prologue.lamps;
 kostLampBulb = chapters.prologue.lampBulb;
+applyLighting();
 
 let prologueColliders = buildColliders(prologue.group);
 const hospitalColliders = buildColliders(groups.hospital);
@@ -384,7 +386,6 @@ const saveGameState = () => ({
   progress: storyProgress,
   pocongWoken,
   unlockedExit,
-kostLampOn,
   tvOn,
   createdAt: saveSystem.createdAt ?? Date.now(),
   timestamp: Date.now(),
@@ -419,7 +420,6 @@ const applyGameState = async (data) => {
   playTime = data.playTime ?? 0;
   unlockedExit = Boolean(data.unlockedExit);
   pocongWoken = Boolean(data.pocongWoken);
-  kostLampOn = Boolean(data.kostLampOn);
   tvOn = Boolean(data.tvOn);
   applyTvState();
 
@@ -470,7 +470,7 @@ const applyGameState = async (data) => {
 const objectiveForPhase = () => {
   switch (storyPhase) {
     case 'wake':
-      return 'Bangun tidur. Ada sesuatu di laptop-mu. Periksa.';
+      return 'Bangun tidur. Ada sesuatu di komputermu. Periksa.';
     case 'laptop':
       return 'Beritanya mengerikan. Teleponmu berdering... Angkat.';
     case 'phone':
@@ -666,12 +666,6 @@ const inspect = (target) => {
   overlays.showNote('Fuse Box', target.data.message ?? FUSE_MESSAGE);
 };
 
-const toggleKostLamp = () => {
-  kostLampOn = !kostLampOn;
-  applyLighting();
-  audio.play('pickup');
-};
-
 const applyTvState = () => {
   const tv = prologue.group.getObjectByName('kost-tv');
   if (!tv) return;
@@ -724,7 +718,6 @@ const handleInteractable = async (item) => {
   else if (action === 'door') await tryExit();
   else if (action === 'exit') await tryExit();
   else if (action === 'bathroom-door') toggleBathroomDoor();
-  else if (action === 'light-switch') toggleKostLamp();
   else if (action === 'tv-toggle') toggleTv();
 };
 
@@ -741,7 +734,6 @@ const resetPrologueState = () => {
   inventory.restore([]);
   flashlightBattery = 100;
   flashlightOn = true;
-kostLampOn = false;
   tvOn = false;
   applyTvState();
   applyLighting();
@@ -751,7 +743,7 @@ kostLampOn = false;
   player.hiddenCam = null;
   switchToPrologue();
   player.teleport(prologue.spawn.x, prologue.spawn.z, Math.PI);
-  setPhase('wake', 'Bangun tidur. Ada sesuatu di laptop-mu. Periksa.');
+  setPhase('wake', 'Bangun tidur. Ada sesuatu di komputermu. Periksa.');
   audio.stop('ghostNear');
   audio.stop('bgm');
   pocongWoken = false;
@@ -954,9 +946,6 @@ const updatePrompt = () => {
   const item = raycastInteractable();
   if (item) {
     let prompt = item.data.prompt;
-    if (item.data.action === 'light-switch') {
-      prompt = kostLampOn ? 'Matikan lampu' : 'Nyalakan lampu';
-    }
     if (item.data.action === 'bathroom-door') {
       prompt = openedDoors.has('bathroom-door')
         ? 'Tutup pintu kamar mandi'
@@ -1150,7 +1139,8 @@ const bootstrap = async () => {
       area: () => currentRoomName(),
       objective: () => objectiveForPhase(),
       has: (id) => inventory.has(id),
-      lampOn: () => kostLampOn,
+      lampOn: () =>
+        kostLamps.length === 4 && kostLamps.every((lamp) => lamp.intensity > 0),
       tvOn: () => tvOn,
       countBattery: () => inventory.count('battery'),
       hidden: () => player.hidden,

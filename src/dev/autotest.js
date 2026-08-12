@@ -31,16 +31,7 @@ export const runAutotest = async (g) => {
   const moved = g.pos();
   assert(Math.abs(moved.x - startPos.x) > 0.4, 'strafe moves player', `${startPos.x.toFixed(2)} -> ${moved.x.toFixed(2)}`);
 
-  await g.aimAt(1.35, 6.45, 1.7, 6.87, 1.35);
-  await g.interact();
-  await sleep(200);
-  assert(g.lampOn(), 'light switch turns lamp on', `on=${g.lampOn()} pos=${JSON.stringify(g.pos())} phase=${g.phase()}`);
-  await g.interact();
-  await sleep(200);
-  assert(!g.lampOn(), 'light switch turns lamp off', `on=${g.lampOn()} pos=${JSON.stringify(g.pos())} phase=${g.phase()}`);
-  await g.interact();
-  await sleep(200);
-  assert(g.lampOn(), 'light switch turns lamp on again', `on=${g.lampOn()} pos=${JSON.stringify(g.pos())} phase=${g.phase()}`);
+  assert(g.lampOn(), 'all four house lights stay on');
 
   await g.aimAt(-0.4, 1.9, -1.5, 2.05, 1.2);
   await g.interact();
@@ -51,10 +42,10 @@ export const runAutotest = async (g) => {
   await sleep(200);
   assert(!g.doorOpen('bathroom-door'), 'bathroom door closes');
 
-  await g.aimAt(4.75, 3.9, 4.75, 4.42, 0.95);
+  await g.aimAt(3.7, 5.15, 3.7, 6.03, 1.4);
   await g.interact();
   await sleep(400);
-  assert(g.newsOpen(), 'laptop opens news');
+  assert(g.newsOpen(), 'computer opens news');
   closeNews();
   await sleep(200);
   assert(g.phase() === 'laptop', 'news close -> phase=laptop', g.phase());
@@ -77,7 +68,7 @@ export const runAutotest = async (g) => {
   await sleep(200);
   assert(!g.tvOn(), 'tv turns off');
 
-  await g.aimAt(3.7, 4.35, 4.0, 4.5, 0.9);
+  await g.aimAt(2.55, 5.15, 2.55, 6.04, 1.2);
   await g.interact();
   await sleep(300);
   assert(g.dialogOpen(), 'phone opens dialog');

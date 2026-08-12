@@ -1,10 +1,10 @@
 # Progres Pengembangan Ambacong
 
-Snapshot: 12 Agustus 2026. Status saat ini: **vertical slice Chapter 1 lengkap dan lolos verifikasi otomatis browser end-to-end (38/38 cek)**.
+Snapshot: 12 Agustus 2026. Status saat ini: **vertical slice Chapter 1 lengkap dengan runtime suite 36 cek**.
 
 ## Alur yang Sudah Bisa Dimainkan
 
-1. Pemain bangun di kamar kost, membaca berita horror di laptop, menerima telepon peringatan dari Raka.
+1. Pemain bangun di kamar kost, membaca berita horror di komputer, menerima telepon peringatan dari Raka.
 2. Keluar kost dan berjalan ke Rumah Sakit Puri Jiwa; akses jalan utama ditutup, pemain masuk lewat celah pintu samping (interaksi `E`).
 3. Jelajahi 2 lantai rumah sakit (17 ruang): lobby, tunggu, administrasi, periksa, janitor, bangsal, operasi, gudang, pintu keluar utama, tangga darurat, koridor, arsip, isolasi, perawatan A/B, tangga lantai 2.
 4. Kumpulkan baterai senter lalu naik ke lantai 2 untuk mencari kunci janitor di ruang arsip.
@@ -58,9 +58,9 @@ Snapshot: 12 Agustus 2026. Status saat ini: **vertical slice Chapter 1 lengkap d
 
 Unit test (`npm test`) melindungi logika: urutan kunci sebelum pintu, gerak diagonal, stamina 0–100, pocong mengejar, arah senter, baterai senter.
 
-Runtime test browser end-to-end (`npm run test:runtime`, headless Chrome + SwiftShader, tanpa dependency tambahan) menjalankan 38 cek dari menu sampai Chapter Complete:
+Runtime test browser end-to-end (`npm run test:runtime`, headless Chrome + SwiftShader, tanpa dependency tambahan) menjalankan 36 cek dari menu sampai Chapter Complete:
 
-- Alur penuh: new game → prologue (lampu/saklar toggle, laptop/telepon) → keluar kost → halaman rumah sakit → masuk pintu samping → lobby → peta/inventory toggle → baterai 1 → hide/keluar loker → naik lantai 2 → kunci janitor (pocong bangun) → baterai 2 → turun lantai 1 → pintu keluar (butuh kunci) → Chapter Complete → kembali ke menu. Cek tambahan: pintu kost terkunci sebelum telepon diangkat (dialog peringatan), dan pintu kamar mandi bisa dibuka/tutup.
+- Alur penuh: new game → prologue (empat lampu tetap nyala, komputer/telepon) → keluar kost → halaman rumah sakit → masuk pintu samping → lobby → peta/inventory toggle → baterai 1 → hide/keluar loker → naik lantai 2 → kunci janitor (pocong bangun) → baterai 2 → turun lantai 1 → pintu keluar (butuh kunci) → Chapter Complete → kembali ke menu. Cek tambahan: pintu kost terkunci sebelum telepon diangkat (dialog peringatan), dan pintu kamar mandi bisa dibuka/tutup.
 - Memvalidasi state, fase cerita, nama ruang, pickup, physics gerak, dan fase lantai.
 - Driver dev: `src/dev/autotest.js`, diaktifkan via `?autotest=ch1`; hook DEV `window.__ambacong` di `main.js`.
 
@@ -82,13 +82,13 @@ Perintah: `npm test`, `npm run test:runtime`, `npm run lint`, `npm run format:ch
 - **Map tidak lagi spoiler**: marker item (kunci) dan posisi pocong dihapus dari peta; hanya ruang aktif + pintu keluar yang tampil. Legenda ikut diperbaiki.
 - **Prompt item wajib**: pintu keluar punya `requires: key-janitor`; prompt interaksi menampilkan "— Butuh: Kunci Janitor" jika item belum ada. Dialog kunci pintu ikut disebutkan nama itemnya.
 - **Nama area tidak ditampilkan**: label ruangan (sprite 3D di kamar kost & rumah sakit) dan teks area di HUD dihapus total — tidak lagi mengganggu pandangan. Nama ruang tetap terlihat di peta.
-- **Lighting per lokasi**: kamar kost terang (lampu langit-langit hangat + ambient dinaikkan); rumah sakit gelap (ambient/moon diturunkan, neon flicker tetap, butuh senter).
+- **Lighting per lokasi**: empat lampu langit-langit hangat selalu menyala di kamar tidur, ruang TV, dapur, dan kamar mandi; rumah sakit tetap gelap dan butuh senter.
 - **Bug senter diperbaiki**: intensity senter selalu 0 sehingga cahaya senter tidak pernah tampil; kini nyala 2.4 saat `F` aktif.
 - **Detail kamar kost**: kursi diperbaiki arahnya (sebelumnya `rotationY=Math.PI`, backrest menempel meja), meja diberi kaki (sebelumnya mengambang), telepon dipindah ke atas meja (sebelumnya menggantung di tepi meja).
 
 ## Toast "Objektif Baru": banner muncul saat objektif berubah (pocong bangun, ganti lantai, dsb.), faded setelah 4.2 detik.
 - **Vignette**: lapisan radial-gradient gelap di tepi layar untuk atmosfer horror.
-- **Saklar lampu kost + lampu langit-langit**: lampu kamar kost kini hidup lewat saklar di dinding dekat pintu (`E` untuk toggle; prompt dinamis "Nyalakan/Matikan lampu"). Di langit-langit ada fitting lampu kasat mata (kabel, tudung, bohlam) — bohlam menyala (emissive) dan cahaya menerangi seluruh ruangan saat saklar on. Awal game lampu mati (kost gelap, senter membantu), state lampu ikut tersimpan di save.
+- **Lampu kost permanen**: setiap ruangan memiliki fitting, bohlam emissive, dan point light sendiri. Lampu selalu menyala selama pemain berada di kost; saklar dan state save lampu dihapus.
 - **Kamar mandi & dapur di kost**: kost dibagi jadi kamar + kamar mandi (barat utara: kloset, wastafel) + dapur (barat selatan: meja masak, kompor, kulkas, rak bumbu) dengan dinding partisi berdinding pintu masuk tiap ruang. Ranjang dipindah ke sisi timur.
 
 ## Update Terbaru (12 Agustus 2026 — sesi ini)
@@ -112,7 +112,7 @@ Perintah: `npm test`, `npm run test:runtime`, `npm run lint`, `npm run format:ch
 ## Tata Ruang Kost Baru: Kamar Tidur + Ruang Tamu (12 Agustus 2026 — sesi ini)
 
 - **Kamar mandi & dapur terpisah lebih tegas**: divider ditebalkan (0.3) + frame pintu (header & jamb) tiap entri; entri kamar mandi dilebarin 1.5, entri dapur dilebarin 2.0. Toilet (pedestal, tank, seat ring, flush) & wastafel (kolom, basin, faucet, cermin glass) dibangun ulang dengan material `porcelain`.
-- **Kamar khusus player (kamar tidur)** di sisi timur-utara: kasur, **lemari** (carcass + 2 pintu + gagang), meja belajar + kursi, laptop & telepon pindah ke sini (belakang lampu meja).
+- **Kamar khusus player (kamar tidur)** di sisi timur-utara: kasur, **lemari** (carcass + 2 pintu + gagang), meja belajar, kursi kantor, komputer desktop, dan telepon.
 - **Ruang tamu** di sisi timur-selatan: **sofa 3 dudukan + backrest + armrest**, meja TV, dan **TV yang bisa ON/OFF** (`E`; prompt dinamis "Nyalakan/Matikan TV") — layar menyala emissive biru + glow light saat on, mati hitam saat off. State TV ikut tersimpan di save.
 - Pembatas kamar tidur/ruang tamu di z=-1.5 dengan bukaan pintu ber-frame (x 1.8..3.4). Aliran: kamar tidur → ruang tamu → (timur) TV & sofa, (barat) dapur; kamar mandi tetap di barat-utara.
-- Runtime test diperluas 36 → **38 cek** (TV on + TV off). Semua lolos: lint, unit 16/16, runtime 38/38.
+- Runtime suite kini berisi **36 cek** setelah interaksi saklar lampu dihapus. Unit 16/16 dan lint tetap lolos.
