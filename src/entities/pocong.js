@@ -29,6 +29,7 @@ export class Pocong {
 
   setPatrol(points) {
     this.patrolPoints = points.map(([x, z]) => new THREE.Vector3(x, 0, z));
+    this.patrolIndex = 0;
   }
 
   wake() {
@@ -49,16 +50,10 @@ export class Pocong {
   canSee(player, info, range) {
     if (player.hidden) return false;
     const distance = this.distanceTo(player.position);
-    if (distance > range) return false;
-    if (info.playerFlashlightOn && info.aimingPocong) return distance < SIGHT_RANGE_LIT;
-    if (player.crouching) {
-      if (distance > SOUND_RANGE || distance < 3.5) return distance < 4;
-      return false;
-    }
-    if (player.sprinting) {
-      if (distance > SOUND_RANGE) return false;
-      return true;
-    }
+    const sightRange = info.playerFlashlightOn && info.aimingPocong ? SIGHT_RANGE_LIT : range;
+    if (distance > sightRange) return false;
+    if (player.sprinting && distance <= SOUND_RANGE) return true;
+    if (player.crouching && distance < 4) return true;
     if (!hasLineOfSight(this.mesh.position, player.position, this.colliders)) return false;
     const toPlayer = new THREE.Vector3()
       .subVectors(player.position, this.mesh.position)

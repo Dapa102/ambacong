@@ -121,18 +121,6 @@ export const runAutotest = async (g) => {
   assert(g.has('battery'), 'battery 1 picked up');
   if (g.dialogOpen()) await hold('Enter', 30);
 
-  await g.aimAt(9.3, 3.0, 9.45, 3.4, 0.75);
-  await g.pressKey('KeyF');
-  await g.interact();
-  await sleep(300);
-  assert(g.has('key-janitor'), 'gold key picked up');
-  assert(g.pocongVisible(), 'pocong visible after key');
-  if (g.dialogOpen()) {
-    await hold('Enter', 30);
-    await sleep(40);
-    await hold('Enter', 30);
-  }
-
   await g.teleport(6, 4.2, Math.PI);
   await sleep(300);
   await g.pressKey('KeyE');
@@ -148,6 +136,18 @@ export const runAutotest = async (g) => {
   await sleep(500);
   assert(g.floor() === 2, 'stairs-up -> floor 2', `floor=${g.floor()}`);
   assert(g.area() === 'Lantai 2 - Koridor', 'floor2 area=Koridor', g.area());
+
+  await g.aimAt(-8.5, -50.5, -9, -50.5, 0.75);
+  await g.pressKey('KeyF');
+  await g.interact();
+  await sleep(300);
+  assert(g.has('key-janitor'), 'gold key picked up on floor 2');
+  assert(g.pocongVisible(), 'pocong visible after key');
+  if (g.dialogOpen()) {
+    await hold('Enter', 30);
+    await sleep(40);
+    await hold('Enter', 30);
+  }
 
   await g.aimAt(8.8, -36.9, 8.8, -37.5, 0.6);
   await g.interact();

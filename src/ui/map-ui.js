@@ -30,11 +30,15 @@ export const renderMap = ({ rooms, floor, player, pocong, markers, visibleMarker
     maxZ: Math.max(...floorRooms.map((room) => room.maxZ)),
   };
   const pad = 16;
-  const scaleX = (WIDTH - pad * 2) / (extent.maxX - extent.minX);
-  const scaleZ = (HEIGHT - pad * 2) / (extent.maxZ - extent.minZ);
+  const scale = Math.min(
+    (WIDTH - pad * 2) / (extent.maxX - extent.minX),
+    (HEIGHT - pad * 2) / (extent.maxZ - extent.minZ)
+  );
+  const offsetX = (WIDTH - (extent.maxX - extent.minX) * scale) / 2;
+  const offsetY = (HEIGHT - (extent.maxZ - extent.minZ) * scale) / 2;
   const transform = (x, z) => ({
-    x: pad + (x - extent.minX) * scaleX,
-    y: pad + (z - extent.minZ) * scaleZ,
+    x: offsetX + (x - extent.minX) * scale,
+    y: offsetY + (z - extent.minZ) * scale,
   });
 
   context.clearRect(0, 0, WIDTH, HEIGHT);
@@ -81,6 +85,7 @@ export const renderMap = ({ rooms, floor, player, pocong, markers, visibleMarker
   for (const marker of markers) {
     if (marker.type === 'key') drawMarker(marker.x, marker.z, '#d6a800', 4, 'Kunci');
     if (marker.type === 'exit') drawMarker(marker.x, marker.z, '#3fae5a', 4, 'Keluar');
+    if (marker.type === 'stairs') drawMarker(marker.x, marker.z, '#4d8fd1', 4, 'Tangga');
   }
 
   if (pocong?.visible) {
@@ -88,13 +93,17 @@ export const renderMap = ({ rooms, floor, player, pocong, markers, visibleMarker
   }
 
   const playerPoint = transform(player.position.x, player.position.z);
+  context.save();
+  context.translate(playerPoint.x, playerPoint.y);
+  context.rotate(-player.yaw);
   context.beginPath();
-  context.moveTo(playerPoint.x, playerPoint.y - 6);
-  context.lineTo(playerPoint.x - 5, playerPoint.y + 5);
-  context.lineTo(playerPoint.x + 5, playerPoint.y + 5);
+  context.moveTo(0, -7);
+  context.lineTo(-5, 5);
+  context.lineTo(5, 5);
   context.closePath();
   context.fillStyle = '#ffffff';
   context.fill();
+  context.restore();
 
   titleEl.textContent = `PETA RUMAH SAKIT — LANTAI ${floor}`;
 };

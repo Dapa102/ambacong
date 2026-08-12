@@ -424,8 +424,11 @@ const applyGameState = async (data) => {
   applyTvState();
 
   for (const item of chapters.interactables) {
-    if (item.userData.itemId && collectedItems.has(keyRefFor(item, item.userData.itemId))) {
-      item.visible = false;
+    if (item.userData.itemId) {
+      const itemId = item.userData.itemId;
+      const wasCollected = collectedItems.has(keyRefFor(item, itemId));
+      const uniqueItemOwned = itemId !== 'battery' && inventory.has(itemId);
+      item.visible = !(wasCollected || uniqueItemOwned);
     }
   }
 
@@ -450,8 +453,8 @@ const applyGameState = async (data) => {
   player.pitch = data.pitch ?? 0;
   player.position.y = data.position.y ?? 1.7;
 
+  pocong.setPatrol(PATROLS[currentFloor]);
   if (pocongWoken) {
-    pocong.setPatrol(PATROLS[currentFloor]);
     pocong.wake();
     enemy.position.set(-10.5, 0, currentFloor === FLOOR_TWO ? -47 : -5);
     audio.startLoop('ghostNear', 0.4);
@@ -477,7 +480,7 @@ const objectiveForPhase = () => {
     case 'inside':
       return pocongWoken
         ? 'Pocong terbangun! Jangan ketahuan. Cari jalan keluar!'
-        : 'Jelajahi rumah sakit. Cari kunci pembuka pintu keluar di ruang janitor.';
+        : 'Naik ke lantai 2. Cari Kunci Janitor di ruang arsip.';
     case 'complete':
       return 'Kamu berhasil keluar. Chapter 1 selesai.';
     default:
@@ -527,7 +530,7 @@ const leaveKost = async () => {
   overlays.showLoading('Berjalan menuju rumah sakit...');
   await sleep(700);
   switchToHospital();
-  player.teleport(hospital.spawn.x, hospital.spawn.z, -Math.PI / 2);
+  player.teleport(hospital.spawn.x, hospital.spawn.z, 0);
   currentFloor = FLOOR_ONE;
   refreshFloor();
   updateArea();
@@ -543,7 +546,7 @@ const enterHospital = async () => {
   await sleep(500);
   player.teleport(hospital.insideSpawn.x, hospital.insideSpawn.z);
   currentFloor = FLOOR_ONE;
-  setPhase('inside', 'Jelajahi rumah sakit. Cari kunci pembuka pintu keluar di ruang janitor.');
+  setPhase('inside', 'Naik ke lantai 2. Cari Kunci Janitor di ruang arsip.');
   updateArea();
   overlays.hideLoading();
   attemptSave();
@@ -728,6 +731,9 @@ const handleInteractable = async (item) => {
 const resetPrologueState = () => {
   storyProgress = 'start';
   storyPhase = 'wake';
+  currentFloor = FLOOR_ONE;
+  playTime = 0;
+  unlockedExit = false;
   triggeredEvents.clear();
   collectedItems.clear();
   completedObjectives.clear();
@@ -741,6 +747,8 @@ kostLampOn = false;
   applyLighting();
   applyDoorStates();
   player.stamina = 100;
+  player.exitHide();
+  player.hiddenCam = null;
   switchToPrologue();
   player.teleport(prologue.spawn.x, prologue.spawn.z, Math.PI);
   setPhase('wake', 'Bangun tidur. Ada sesuatu di laptop-mu. Periksa.');
@@ -748,6 +756,7 @@ kostLampOn = false;
   audio.stop('bgm');
   pocongWoken = false;
   pocong.groundReset();
+  pocong.setPatrol(PATROLS[FLOOR_ONE]);
   enemy.visible = false;
   for (const item of chapters.interactables) {
     item.visible = true;
@@ -921,12 +930,22 @@ const toggleMap = () => {
 };
 
 const renderMapState = () => {
+  const markers =
+    playerFloor === FLOOR_ONE
+      ? [
+          { type: 'exit', x: 0, z: -17 },
+          { type: 'stairs', x: 4.15, z: -12.3 },
+        ]
+      : [
+          { type: 'stairs', x: 4.15, z: -55.5 },
+          ...(inventory.has('key-janitor') ? [] : [{ type: 'key', x: -9, z: -50.5 }]),
+        ];
   renderMap({
     rooms: hospital.rooms,
     floor: playerFloor,
     player,
     pocong: null,
-    markers: [{ type: 'exit', x: 0, z: -17 }],
+    markers,
     visibleMarker: currentRoomName(),
   });
 };

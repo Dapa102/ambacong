@@ -372,6 +372,30 @@ const createNeonLight = (materials, position) => {
   return { lightGroup, pointLight };
 };
 
+const createSign = (text, position) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 128;
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#17191c';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.strokeStyle = '#d6c98f';
+  context.lineWidth = 8;
+  context.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+  context.fillStyle = '#f0e7bd';
+  context.font = '700 54px system-ui, sans-serif';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
+  sign.position.set(...position);
+  sign.scale.set(3, 0.75, 1);
+  return sign;
+};
+
 const createPocong = (materials, position, imageUrl) => {
   const pocong = new THREE.Group();
   pocong.name = 'pocong-merah';
@@ -756,6 +780,13 @@ const buildHospital = (materials, pocongImageUrl) => {
   );
 
   group.add(entrance, exitDoor, stairsUp, stairsDown);
+  group.add(
+    createSign('PINTU SAMPING', [-12.4, 2.55, 16.4]),
+    createSign('KELUAR', [0, 2.55, -16.5]),
+    createSign('TANGGA', [4.15, 2.55, -12]),
+    createSign('TANGGA', [4.15, 2.55, -55.2]),
+    createSign('ARSIP', [-3.85, 2.55, -49])
+  );
   interactables.push(entrance, exitDoor, stairsUp, stairsDown);
 
   group.add(floorPlane(materials.asphalt, [0, 0.01, COURT_Z], [18, 12]));
@@ -764,7 +795,7 @@ const buildHospital = (materials, pocongImageUrl) => {
   group.add(box(materials.metal, [-4.2, 0.9, COURT_Z - 2.6], [0.18, 1.8, 0.18]));
   group.add(box(materials.metal, [4.2, 0.9, COURT_Z - 2.6], [0.18, 1.8, 0.18]));
 
-  const key = createRustyKey(materials, [9.2, 0.78, 3.4]);
+  const key = createRustyKey(materials, [-9, 0.78, -50.5]);
   const batteryOne = createPickup(
     materials,
     [-9.2, 0.52, 4],
@@ -781,7 +812,7 @@ const buildHospital = (materials, pocongImageUrl) => {
   );
   const note = createPickup(
     materials,
-    [-9, 0.72, -50.5],
+    [-9, 0.72, -37.5],
     'medical-note',
     'Catatan Medis',
     materials.paper
@@ -794,6 +825,10 @@ const buildHospital = (materials, pocongImageUrl) => {
 
   const lobbyCounter = createDeskCounter(materials, [-0.4, 0, 11.3]);
   group.add(lobbyCounter);
+
+  const sideEntryLight = new THREE.PointLight(0xffd29a, 1.4, 9);
+  sideEntryLight.position.set(-12.4, 2.4, 18);
+  group.add(sideEntryLight);
 
   group.add(createBed(materials, [-10.5, 0, -5], 0, true));
   group.add(createBed(materials, [8.9, 0, -2.6], Math.PI / 2));

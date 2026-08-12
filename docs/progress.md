@@ -7,8 +7,8 @@ Snapshot: 12 Agustus 2026. Status saat ini: **vertical slice Chapter 1 lengkap d
 1. Pemain bangun di kamar kost, membaca berita horror di laptop, menerima telepon peringatan dari Raka.
 2. Keluar kost dan berjalan ke Rumah Sakit Puri Jiwa; akses jalan utama ditutup, pemain masuk lewat celah pintu samping (interaksi `E`).
 3. Jelajahi 2 lantai rumah sakit (17 ruang): lobby, tunggu, administrasi, periksa, janitor, bangsal, operasi, gudang, pintu keluar utama, tangga darurat, koridor, arsip, isolasi, perawatan A/B, tangga lantai 2.
-4. Kumpulkan baterai senter dan kunci janitor (pocong bangun + mengejar setelah kunci diambil).
-5. Naik ke lantai 2, ambil baterai kedua dan catatan medis, lalu turun lagi.
+4. Kumpulkan baterai senter lalu naik ke lantai 2 untuk mencari kunci janitor di ruang arsip.
+5. Ambil kunci (pocong bangun), baterai kedua, dan catatan medis, lalu turun lagi.
 6. Buka pintu keluar dengan kunci → layar Chapter Complete → kembali ke menu utama.
 7. Jika tertangkap pocong, layar Game Over dan permainan dapat diulang.
 8. Progress tersimpan otomatis; tombol Lanjut di menu memuat save (IndexedDB + fallback localStorage).
@@ -60,7 +60,7 @@ Unit test (`npm test`) melindungi logika: urutan kunci sebelum pintu, gerak diag
 
 Runtime test browser end-to-end (`npm run test:runtime`, headless Chrome + SwiftShader, tanpa dependency tambahan) menjalankan 38 cek dari menu sampai Chapter Complete:
 
-- Alur penuh: new game → prologue (lampu/saklar toggle, laptop/telepon) → keluar kost → halaman rumah sakit → masuk pintu samping → lobby → peta/inventory toggle → baterai 1 → kunci janitor (pocong bangun) → hide/keluar loker → naik lantai 2 → baterai 2 → turun lantai 1 → pintu keluar (butuh kunci) → Chapter Complete → kembali ke menu. Cek tambahan: pintu kost terkunci sebelum telepon diangkat (dialog peringatan), dan pintu kamar mandi bisa dibuka/tutup.
+- Alur penuh: new game → prologue (lampu/saklar toggle, laptop/telepon) → keluar kost → halaman rumah sakit → masuk pintu samping → lobby → peta/inventory toggle → baterai 1 → hide/keluar loker → naik lantai 2 → kunci janitor (pocong bangun) → baterai 2 → turun lantai 1 → pintu keluar (butuh kunci) → Chapter Complete → kembali ke menu. Cek tambahan: pintu kost terkunci sebelum telepon diangkat (dialog peringatan), dan pintu kamar mandi bisa dibuka/tutup.
 - Memvalidasi state, fase cerita, nama ruang, pickup, physics gerak, dan fase lantai.
 - Driver dev: `src/dev/autotest.js`, diaktifkan via `?autotest=ch1`; hook DEV `window.__ambacong` di `main.js`.
 
@@ -115,4 +115,4 @@ Perintah: `npm test`, `npm run test:runtime`, `npm run lint`, `npm run format:ch
 - **Kamar khusus player (kamar tidur)** di sisi timur-utara: kasur, **lemari** (carcass + 2 pintu + gagang), meja belajar + kursi, laptop & telepon pindah ke sini (belakang lampu meja).
 - **Ruang tamu** di sisi timur-selatan: **sofa 3 dudukan + backrest + armrest**, meja TV, dan **TV yang bisa ON/OFF** (`E`; prompt dinamis "Nyalakan/Matikan TV") — layar menyala emissive biru + glow light saat on, mati hitam saat off. State TV ikut tersimpan di save.
 - Pembatas kamar tidur/ruang tamu di z=-1.5 dengan bukaan pintu ber-frame (x 1.8..3.4). Aliran: kamar tidur → ruang tamu → (timur) TV & sofa, (barat) dapur; kamar mandi tetap di barat-utara.
-- Runtime test diperluas 36 → **38 cek** (TV on + TV off). Semua lolos: lint, unit 14/14, runtime 38/38.
+- Runtime test diperluas 36 → **38 cek** (TV on + TV off). Semua lolos: lint, unit 16/16, runtime 38/38.
