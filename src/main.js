@@ -1,235 +1,1115 @@
 import * as THREE from 'three';
-import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { moveToward } from './chase.js';
-import { aimForward, drainBattery } from './flashlight.js';
-import { readMovement, updateStamina } from './movement.js';
+import { createChapterScenes, updateHospitalEffects } from './chapter-one-assets.js';
+import { InputSystem } from './core/input-system.js';
+import { StateMachine } from './core/state-machine.js';
+import { SaveSystem, SAVE_SLOT } from './systems/save-system.js';
+import { AudioSystem } from './systems/audio-system.js';
+import { buildColliders } from './systems/collision-system.js';
+import { InventorySystem, ITEM_CATALOG } from './systems/inventory-system.js';
+import { Player } from './entities/player.js';
+import { Pocong } from './entities/pocong.js';
+import { drainBattery, aimForward } from './flashlight.js';
 import { advanceProgress } from './progress.js';
+import { initMenu, showMenu, hideMenu, setContinueEnabled } from './ui/menu.js';
+import { hud } from './ui/hud.js';
+import * as overlays from './ui/overlays.js';
+import { initMapUi, openMap, closeMap, isMapOpen, renderMap } from './ui/map-ui.js';
+import {
+  initInventoryUi,
+  openInventory,
+  closeInventory,
+  isInventoryOpen,
+  tryUseSelected,
+} from './ui/inventory-ui.js';
 
-// ponytail: tune playtime here; add battery pickups only after drain feels fair.
-const BATTERY_DRAIN_PER_SECOND = 2;
-// ponytail: tune sprint feel here; add upgrades only after chase pacing is proven.
-const WALK_SPEED = 4;
-const SPRINT_SPEED = 7;
-const STAMINA_DRAIN_PER_SECOND = 20;
-const STAMINA_RECOVERY_PER_SECOND = 12;
+const INTERACT_DISTANCE = 3.4;
+const INTERACT_CROUCH_DISTANCE = 2.6;
 
-const init = () => {
-  const container = document.getElementById('app');
-  const uiLayer = document.getElementById('ui-layer');
-  const startButton = document.getElementById('start-button');
-  const screenTitle = document.getElementById('screen-title');
-  const screenHelp = document.getElementById('screen-help');
-  const objective = document.getElementById('objective');
-  const prompt = document.getElementById('interaction-prompt');
-  const flashlightStatus = document.getElementById('flashlight-status');
-  const staminaStatus = document.getElementById('stamina-status');
+const NEWS_BODY = [
+  'Pagi ini, warga dihebohkan dengan kabar dari Rumah Sakit Puri Jiwa yang telah ditutup sejak 12 tahun lalu. Berikut rangkuman kejadian:',
+  '',
+  '1. Penampakan perawat tak berwajah yang berjalan di lorong bangsal pada malam hari.',
+  '2. Empat korban jiwa ditemukan di Ruang Isolasi dengan luka aneh, bukan akibat penyakit.',
+  '3. Beberapa orang yang nekat masuk ke dalamnya pada malam hari tidak pernah ditemukan lagi.',
+  '',
+  'Pihak berwenang menutup akses jalan utama. Warga sekitar mengaku masih mendengar jeritan dan suara kain berkibar dari dalam gedung.',
+].join('\n');
 
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x111114);
-  scene.fog = new THREE.Fog(0x111114, 8, 24);
+const PHONE_DIALOG = [
+  { speaker: 'Raka', text: 'Bro! Lo bangun? Gue baru baca berita gila.' },
+  { speaker: 'Kamu', text: 'Hah? Kenapa? Lagi santai nih.' },
+  { speaker: 'Raka', text: 'Rumah sakit Puri Jiwa di utara itu. Masih ingat gak?' },
+  { speaker: 'Kamu', text: 'Tau dong. Rumah sakit yang ditinggalkan itu.' },
+  { speaker: 'Raka', text: 'Iya. Banyak yang ilang di sana bro. Jangan deket-deket.' },
+  { speaker: 'Kamu', text: 'Santai. Gue justru penasaran. Malam ini gue ke sana.' },
+  { speaker: 'Raka', text: 'LO GILA?! Jangan bro! Gue gak mau kehilangan lo!' },
+  { speaker: 'Kamu', text: 'Tenang. Gue cuma lihat-lihat. Habis itu langsung cabut.' },
+  { speaker: 'Raka', text: 'Sialan lo... Hati-hati. Serius. KALAU ADA APA-APA, CABUT!' },
+];
 
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 30);
-  camera.position.set(0, 1.7, 5);
+const MEDICAL_NOTE_BODY = [
+  'CATATAN MEDIS — PASIEN 27',
+  'Ruang Isolasi, sayap timur.',
+  '',
+  '"Pasien dalam keadaan tenang, namun tiap malam sekitar pukul 00.00 ia berbisik: JANGAN BUKA PINTU SETELAH TENGAH MALAM...',
+  '',
+  'Satu minggu kemudian pasien ditemukan hilang. Di ranjang hanya tersisa kain putih kotor. Perawat yang berjaga juga tak ditemukan."',
+  '',
+  'Catatan terakhir bertuliskan: "Dia tidak sendirian."',
+].join('\n');
 
-  const flashlight = new THREE.SpotLight(0xfff4dd, 60, 14, Math.PI / 12, 0.4, 1.5);
-  const flashlightDirection = new THREE.Vector3();
-  camera.add(flashlight);
-  scene.add(camera, flashlight.target);
+const FUSE_MESSAGE =
+  'Fuse box mati total. Ada bekas terbakar dan bau kabel gosong. Mungkin ini alasan lampu sering mati.';
 
-  const renderer = new THREE.WebGLRenderer({ antialias: false });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  container.appendChild(renderer.domElement);
+const PATROLS = {
+  1: [
+    [0, -12],
+    [2, -6],
+    [-4, -6],
+    [-6, -4],
+    [-6, 2],
+    [-9, 4.5],
+    [-8, 12],
+    [0, 12],
+    [8, 12],
+    [9, 4.5],
+    [6, -2],
+    [6, -6],
+    [10, -12],
+    [0, -12],
+  ],
+  2: [
+    [0, -44],
+    [-9, -51],
+    [-9, -37],
+    [0, -37],
+    [9, -37],
+    [9, -51],
+    [0, -49.5],
+    [0, -44],
+  ],
+};
 
-  scene.add(new THREE.HemisphereLight(0xb0b8c8, 0x202028, 0.15));
+const FLOOR_ONE = 1;
+const FLOOR_TWO = 2;
 
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(20, 20),
-    new THREE.MeshLambertMaterial({ color: 0x303036 })
-  );
-  floor.rotation.x = -Math.PI / 2;
-  scene.add(floor, new THREE.GridHelper(20, 20, 0x555560, 0x3a3a42));
+let hospitalVisible = false;
 
-  const wallGeometry = new THREE.BoxGeometry(1, 1, 1);
-  const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x707078 });
-  for (const [x, z, width, depth] of [
-    [-5.5, -10, 9, 0.2],
-    [5.5, -10, 9, 0.2],
-    [0, 10, 20, 0.2],
-    [-10, 0, 0.2, 20],
-    [10, 0, 0.2, 20],
-  ]) {
-    const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-    wall.position.set(x, 1.5, z);
-    wall.scale.set(width, 3, depth);
-    scene.add(wall);
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+let shadowEnabled = true;
+let shadowMapType = THREE.PCFSoftShadowMap;
+let moonShadowSize = 1024;
+let flashlightCastsShadow = true;
+try {
+  const gl = renderer.getContext();
+  const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+  const device = debugInfo
+    ? String(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)).toLowerCase()
+    : '';
+  if (/swiftshader|llvmpipe|softpipe|software/.test(device)) {
+    shadowEnabled = false;
+    shadowMapType = THREE.PCFShadowMap;
+    moonShadowSize = 512;
+    flashlightCastsShadow = false;
+  }
+} catch {
+  shadowEnabled = false;
+  shadowMapType = THREE.PCFShadowMap;
+  moonShadowSize = 512;
+  flashlightCastsShadow = false;
+}
+renderer.shadowMap.enabled = shadowEnabled;
+renderer.shadowMap.type = shadowMapType;
+document.getElementById('app').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070a);
+scene.fog = new THREE.FogExp2(0x070a0f, 0.03);
+
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+scene.add(camera);
+
+const ambientLight = new THREE.AmbientLight(0x2a3450, 1.35);
+const hemisphereLight = new THREE.HemisphereLight(0x131a26, 0x241a12, 0.35);
+const moonLight = new THREE.DirectionalLight(0x9fb4d8, 0.65);
+moonLight.position.set(24, 36, 40);
+moonLight.castShadow = shadowEnabled;
+moonLight.shadow.mapSize.set(moonShadowSize, moonShadowSize);
+moonLight.shadow.camera.near = 1;
+moonLight.shadow.camera.far = 140;
+moonLight.shadow.bias = -0.0006;
+scene.add(ambientLight, hemisphereLight, moonLight);
+const backLight = new THREE.DirectionalLight(0x3a4a5a, 0.35);
+backLight.position.set(-20, 10, -50);
+scene.add(backLight);
+
+let kostLamp = null;
+let kostLampBulb = null;
+let kostLampOn = false;
+
+const applyLighting = () => {
+  const hospitalMode = hospitalVisible;
+  const lampOn = !hospitalMode && kostLampOn;
+  ambientLight.intensity = hospitalMode ? 0.5 : kostLampOn ? 1.2 : 0.35;
+  hemisphereLight.intensity = hospitalMode ? 0.22 : kostLampOn ? 0.5 : 0.18;
+  moonLight.intensity = hospitalMode ? 0.7 : 0.22;
+  backLight.intensity = hospitalMode ? 0.35 : 0.18;
+  if (kostLamp) kostLamp.intensity = lampOn ? 3.0 : 0;
+  if (kostLampBulb) kostLampBulb.emissiveIntensity = lampOn ? 2.6 : 0;
+};
+applyLighting();
+
+const flashlight = new THREE.SpotLight(0xc8d6ff, 0, 42, (34 * Math.PI) / 180, 0.55, 1.1);
+flashlight.castShadow = flashlightCastsShadow;
+flashlight.shadow.mapSize.set(512, 512);
+flashlight.shadow.bias = -0.0006;
+flashlight.shadow.camera.near = 0.2;
+flashlight.shadow.camera.far = 30;
+scene.add(flashlight);
+scene.add(flashlight.target);
+
+const chapters = createChapterScenes(scene, '/assets/ambacong.png');
+scene.traverse((object) => {
+  if (object.isMesh) {
+    object.castShadow = true;
+    object.receiveShadow = true;
+  }
+});
+const { groups, hospital, prologue, flickerLights } = chapters;
+const enemy = chapters.enemy;
+kostLamp = chapters.prologue.lamp;
+kostLampBulb = chapters.prologue.lampBulb;
+
+const prologueColliders = buildColliders(prologue.group);
+const hospitalColliders = buildColliders(groups.hospital);
+
+const player = new Player(camera);
+const input = new InputSystem();
+const state = new StateMachine('menu');
+const saveSystem = new SaveSystem();
+const audio = new AudioSystem();
+const inventory = new InventorySystem();
+const pocong = new Pocong(enemy, hospitalColliders);
+pocong.setPatrol(PATROLS[FLOOR_ONE]);
+
+let storyPhase = 'wake';
+let storyProgress = 'start';
+let currentFloor = FLOOR_ONE;
+let activeColliders = prologueColliders;
+let activeBounds = prologue.bounds;
+let playerFloor = FLOOR_ONE;
+let flashlightOn = true;
+let flashlightBattery = 100;
+let playTime = 0;
+let elapsed = 0;
+let pocongWoken = false;
+let intelligibleClear = false;
+let unlockedExit = false;
+
+const completedObjectives = new Set();
+const collectedItems = new Set();
+const triggeredEvents = new Set();
+const openedDoors = new Set();
+
+const activeGroup = () => (hospitalVisible ? groups.hospital : prologue.group);
+
+const keyRefFor = (group, itemId) => {
+  const x = Math.round(group.position.x);
+  const z = Math.round(group.position.z);
+  return `${itemId}@${x}_${z}`;
+};
+
+const setPhase = (phase, objective) => {
+  storyPhase = phase;
+  if (objective) hud.setObjective(objective);
+};
+
+const findInteractable = (object) => {
+  const group = activeGroup();
+  let node = object;
+  while (node && node !== scene) {
+    if (node.userData && node.userData.action) {
+      let parent = node.parent;
+      while (parent && parent !== scene) {
+        if (parent === group) return node;
+        parent = parent.parent;
+      }
+      return null;
+    }
+    node = node.parent;
+  }
+  return null;
+};
+
+const rayTarget = new THREE.Raycaster(
+  new THREE.Vector3(),
+  new THREE.Vector3(),
+  0,
+  INTERACT_DISTANCE
+);
+const lookDir = new THREE.Vector3();
+const cameraForward = new THREE.Vector3();
+
+const raycastInteractable = () => {
+  camera.getWorldDirection(lookDir);
+  rayTarget.set(camera.position, lookDir);
+  rayTarget.camera = camera;
+  const range = player.crouching ? INTERACT_CROUCH_DISTANCE : INTERACT_DISTANCE;
+  rayTarget.far = range;
+  const hits = rayTarget.intersectObjects(scene.children, true);
+  for (const hit of hits) {
+    const interactable = findInteractable(hit.object);
+    if (interactable) {
+      return { group: interactable, data: interactable.userData, distance: hit.distance };
+    }
+  }
+  return null;
+};
+
+const switchToHospital = () => {
+  prologue.group.visible = false;
+  groups.hospital.visible = true;
+  hospitalVisible = true;
+  activeColliders = hospitalColliders;
+  playerFloor = currentFloor === FLOOR_TWO ? FLOOR_TWO : FLOOR_ONE;
+  applyLighting();
+};
+
+const switchToPrologue = () => {
+  groups.hospital.visible = false;
+  prologue.group.visible = true;
+  hospitalVisible = false;
+  activeColliders = prologueColliders;
+  activeBounds = prologue.bounds;
+  playerFloor = FLOOR_ONE;
+  applyLighting();
+};
+
+const refreshFloor = () => {
+  if (!hospitalVisible) {
+    playerFloor = FLOOR_ONE;
+    return;
+  }
+  playerFloor = player.position.z >= -24 ? FLOOR_ONE : FLOOR_TWO;
+};
+
+const updateArea = () => {
+  refreshFloor();
+  currentFloor = playerFloor;
+  activeBounds = hospitalVisible ? hospital.boundsByFloor[playerFloor] : prologue.bounds;
+};
+
+const currentRoomName = () => {
+  const rooms = hospitalVisible ? hospital.rooms : [];
+  for (const room of rooms) {
+    if (room.floor !== playerFloor) continue;
+    if (
+      player.position.x >= room.minX &&
+      player.position.x <= room.maxX &&
+      player.position.z >= room.minZ &&
+      player.position.z <= room.maxZ
+    ) {
+      return room.name;
+    }
+  }
+  return hospitalVisible ? 'Rumah Sakit' : 'Kamar Kost';
+};
+
+const setPocongFloor = (floor) => {
+  pocong.setPatrol(PATROLS[floor]);
+  if (pocongWoken) pocong.wake();
+  const spawn =
+    floor === FLOOR_TWO ? new THREE.Vector3(8.9, 0, -52) : new THREE.Vector3(-10.5, 0, -5);
+  enemy.position.copy(spawn);
+  enemy.position.y = 0;
+};
+
+const wakePocong = () => {
+  if (pocongWoken) return;
+  pocongWoken = true;
+  pocong.wake();
+  audio.startLoop('ghostNear', 0.4);
+  hud.setObjective('Pocong muncul! Jangan ketahuan. Segera cari jalan keluar!');
+};
+
+const updateGhostAudio = () => {
+  if (!pocongWoken) return;
+  const distance = enemy.position.distanceTo(player.position);
+  const volume = Math.max(0, Math.min(1, 1 - distance / 26)) * 0.9;
+  audio.setLoopVolume('ghostNear', volume);
+};
+
+const playerInfo = () => ({
+  playerFlashlightOn: flashlightOn,
+  aimingPocong: aimingAtPocong(),
+});
+
+const aimingAtPocong = () => {
+  if (!pocongWoken) return false;
+  camera.getWorldDirection(cameraForward);
+  const toEnemy = new THREE.Vector3().subVectors(enemy.position, camera.position).normalize();
+  const dot = cameraForward.dot(toEnemy);
+  return dot > 0.965 && camera.position.distanceTo(enemy.position) < 24;
+};
+
+const saveGameState = () => ({
+  currentChapter: 1,
+  chapterName: 'Rumah Sakit Tua',
+  schemaVersion: 1,
+  phase: storyPhase,
+  floor: currentFloor,
+  position: { x: player.position.x, y: player.position.y, z: player.position.z },
+  yaw: player.yaw,
+  pitch: player.pitch,
+  health: 3,
+  stamina: player.stamina,
+  flashlightBattery,
+  flashlightOn,
+  inventory: [...inventory.items],
+  completedObjectives: [...completedObjectives],
+  collectedItems: [...collectedItems],
+  openedDoors: [...openedDoors],
+  triggeredEvents: [...triggeredEvents],
+  playTime,
+  progress: storyProgress,
+  pocongWoken,
+  unlockedExit,
+  kostLampOn,
+  createdAt: saveSystem.createdAt ?? Date.now(),
+  timestamp: Date.now(),
+  hospitalVisible,
+});
+
+const attemptSave = async () => {
+  const ok = await saveSystem.save(SAVE_SLOT, saveGameState());
+  return ok;
+};
+
+const applyGameState = async (data) => {
+  if (!data) return false;
+
+  inventory.restore(data.inventory ?? []);
+  completedObjectives.clear();
+  collectedItems.clear();
+  openedDoors.clear();
+  triggeredEvents.clear();
+  for (const id of data.completedObjectives ?? []) completedObjectives.add(id);
+  for (const id of data.collectedItems ?? []) collectedItems.add(id);
+  for (const id of data.openedDoors ?? []) openedDoors.add(id);
+  for (const id of data.triggeredEvents ?? []) triggeredEvents.add(id);
+
+  storyPhase = data.phase ?? 'wake';
+  storyProgress = data.progress ?? 'start';
+  currentFloor = data.floor ?? FLOOR_ONE;
+  playerFloor = currentFloor;
+  player.stamina = data.stamina ?? 100;
+  flashlightBattery = data.flashlightBattery ?? 100;
+  flashlightOn = data.flashlightOn ?? true;
+  playTime = data.playTime ?? 0;
+  unlockedExit = Boolean(data.unlockedExit);
+  pocongWoken = Boolean(data.pocongWoken);
+  kostLampOn = Boolean(data.kostLampOn);
+
+  for (const item of chapters.interactables) {
+    if (item.userData.itemId && collectedItems.has(keyRefFor(item, item.userData.itemId))) {
+      item.visible = false;
+    }
   }
 
-  const key = new THREE.Mesh(
-    new THREE.BoxGeometry(0.4, 0.4, 0.4),
-    new THREE.MeshLambertMaterial({ color: 0xd6a800, emissive: 0x664400 })
-  );
-  key.position.set(3, 0.25, 0);
-  key.userData.action = 'key';
+  if (data.hospitalVisible) {
+    hospitalVisible = true;
+  } else {
+    hospitalVisible = false;
+  }
+  if (hospitalVisible) {
+    prologue.group.visible = false;
+    groups.hospital.visible = true;
+    activeColliders = hospitalColliders;
+    playerFloor = currentFloor;
+  } else {
+    groups.hospital.visible = false;
+    prologue.group.visible = true;
+    activeColliders = prologueColliders;
+  }
+  applyLighting();
 
-  const door = new THREE.Mesh(
-    new THREE.BoxGeometry(2, 2.5, 0.2),
-    new THREE.MeshLambertMaterial({ color: 0x6b1010 })
-  );
-  door.position.set(0, 1.25, -9.85);
-  door.userData.action = 'door';
+  player.teleport(data.position.x, data.position.z, data.yaw ?? player.yaw);
+  player.pitch = data.pitch ?? 0;
+  player.position.y = data.position.y ?? 1.7;
 
-  const enemy = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.45, 1.1, 4, 8),
-    new THREE.MeshLambertMaterial({ color: 0xc8c7b7 })
+  if (pocongWoken) {
+    pocong.setPatrol(PATROLS[currentFloor]);
+    pocong.wake();
+    enemy.position.set(-10.5, 0, currentFloor === FLOOR_TWO ? -47 : -5);
+    audio.startLoop('ghostNear', 0.4);
+  } else {
+    pocong.groundReset();
+  }
+
+  updateArea();
+  return true;
+};
+
+const objectiveForPhase = () => {
+  switch (storyPhase) {
+    case 'wake':
+      return 'Bangun tidur. Ada sesuatu di laptop-mu. Periksa.';
+    case 'laptop':
+      return 'Beritanya mengerikan. Teleponmu berdering... Angkat.';
+    case 'phone':
+      return 'Raka sudah memperingatkanmu. Keluar dari kamar dan pergilah.';
+    case 'outside':
+      return 'Malam hari. Akses jalan ditutup — cari jalan masuk yang lain.';
+    case 'inside':
+      return pocongWoken
+        ? 'Pocong terbangun! Jangan ketahuan. Cari jalan keluar!'
+        : 'Jelajahi rumah sakit. Cari kunci pembuka pintu keluar di ruang janitor.';
+    case 'complete':
+      return 'Kamu berhasil keluar. Chapter 1 selesai.';
+    default:
+      return '';
+  }
+};
+
+const showDialog = (lines, onDone) => {
+  overlays.showDialog(lines, () => {
+    if (onDone) onDone();
+  });
+};
+
+const handlePrologueLaptop = () => {
+  overlays.showNews(
+    'Rumah Sakit Puri Jiwa — Ditutup Setelah Penampakan dan Korban Jiwa',
+    NEWS_BODY,
+    () => {
+      if (!triggeredEvents.has('news-read')) {
+        triggeredEvents.add('news-read');
+        setPhase('laptop', 'Beritanya mengerikan. Teleponmu berdering... Angkat.');
+        attemptSave();
+      }
+    }
   );
-  enemy.position.set(-6, 1, -4);
+};
+
+const handleProloguePhone = () => {
+  if (!triggeredEvents.has('phone-answered')) {
+    triggeredEvents.add('phone-answered');
+    setPhase('phone', 'Raka sudah memperingatkanmu. Keluar dari kamar dan pergilah.');
+  }
+  showDialog(PHONE_DIALOG);
+};
+
+const leaveKost = async () => {
+  if (storyPhase === 'outside' || storyPhase === 'inside') return;
+  overlays.showLoading('Berjalan menuju rumah sakit...');
+  await sleep(700);
+  switchToHospital();
+  player.teleport(hospital.spawn.x, hospital.spawn.z, -Math.PI / 2);
+  currentFloor = FLOOR_ONE;
+  refreshFloor();
+  updateArea();
+  setPhase('outside', 'Malam hari. Akses jalan ditutup — cari jalan masuk yang lain.');
+  audio.startLoop('bgm', 0.5);
+  overlays.hideLoading();
+  attemptSave();
+};
+
+const enterHospital = async () => {
+  if (storyPhase !== 'outside') return;
+  overlays.showLoading('Masuk ke dalam...');
+  await sleep(500);
+  player.teleport(hospital.insideSpawn.x, hospital.insideSpawn.z);
+  currentFloor = FLOOR_ONE;
+  setPhase('inside', 'Jelajahi rumah sakit. Cari kunci pembuka pintu keluar di ruang janitor.');
+  updateArea();
+  overlays.hideLoading();
+  attemptSave();
+};
+
+const goToFloorTwo = () => {
+  player.teleport(hospital.floorTwoSpawn.x, hospital.floorTwoSpawn.z);
+  currentFloor = FLOOR_TWO;
+  refreshFloor();
+  updateArea();
+  setPocongFloor(FLOOR_TWO);
+  hud.setObjective(
+    pocongWoken
+      ? 'Pocong ikut naik! Jangan ketahuan.'
+      : 'Lantai 2 rumah sakit. Jelajahi dengan hati-hati.'
+  );
+  attemptSave();
+};
+
+const goToFloorOne = () => {
+  player.teleport(hospital.floorOneStairSpawn.x, hospital.floorOneStairSpawn.z);
+  currentFloor = FLOOR_ONE;
+  refreshFloor();
+  updateArea();
+  setPocongFloor(FLOOR_ONE);
+  hud.setObjective('Kembali ke lantai 1. Cari jalan keluar!');
+  attemptSave();
+};
+
+const tryExit = async () => {
+  if (!inventory.has('key-janitor')) {
+    showDialog([
+      { speaker: '', text: 'Pintu terkunci dari dalam. Butuh: Kunci Janitor.' },
+    ]);
+    return;
+  }
+  storyProgress = advanceProgress(storyProgress, 'door');
+  unlockedExit = true;
+  audio.stop('ghostNear');
+  audio.stop('bgm');
+  setPhase('complete');
+  input.exitLock();
+  input.clear();
+  overlays.showComplete(
+    `Kamu berhasil keluar dari Rumah Sakit Puri Jiwa. Kain putih itu masih berkibar di kegelapan...\n\nSelamat menyelesaikan Chapter 1! Chapter 2 (Kuburan) segera hadir.`,
+    () => {
+      mainMenu();
+    }
+  );
+  attemptSave();
+};
+
+const pickItem = async (item) => {
+  const target = item.data;
+  const added = inventory.add(target.itemId);
+  if (!added) {
+    showDialog([{ speaker: '', text: 'Inventory penuh.' }]);
+    return;
+  }
+  const keyRef = keyRefFor(item.group, target.itemId);
+  collectedItems.add(keyRef);
+  item.group.visible = false;
+  audio.play('pickup');
+  if (target.itemId === 'battery') {
+    showDialog([
+      {
+        speaker: '',
+        text: `Baterai disimpan di inventory (${inventory.count('battery')} buah). Buka dengan [Tab] untuk memakainya.`,
+      },
+    ]);
+  } else if (target.itemId === 'medical-note') {
+    overlays.showNote('Catatan Medis — Pasien 27', MEDICAL_NOTE_BODY);
+  }
+  attemptSave();
+};
+
+const pickKey = async (item) => {
+  if (collectedItems.has(keyRefFor(item.group, item.data.itemId))) return;
+  storyProgress = advanceProgress(storyProgress, 'key');
+  const keyRef = keyRefFor(item.group, item.data.itemId);
+  collectedItems.add(keyRef);
+  inventory.add('key-janitor');
+  item.group.visible = false;
+  audio.play('pickup');
+  audio.play('ghostNear', 0.9);
+  setPhase('inside');
+  wakePocong();
+  showDialog([
+    {
+      speaker: '',
+      text: 'Ditemukan: Kunci Janitor! Tepat saat kunci itu menyentuh tanganmu, suara kain berkibar terdengar dari lorong...',
+    },
+    { speaker: '', text: 'SESEORANG ATAU SESUATU TELAH BERGERAK. LARI KE PINTU KELUAR!' },
+  ]);
+  attemptSave();
+};
+
+const hideIn = (target) => {
+  const spot = new THREE.Vector3();
+  target.group.getWorldPosition(spot);
+  const offset =
+    target.data.hideName === 'locker'
+      ? new THREE.Vector3(0, 0.38, 1.0)
+      : new THREE.Vector3(0, 0.22, 1.05);
+  player.hiddenCam = spot.clone().add(offset);
+  player.enterHide(target.data.hideName ?? 'spot');
+  hud.setHidden(`Diam! Kamu ngumpet di ${target.data.hideName}. [E] untuk keluar.`);
+};
+
+const exitHide = () => {
+  player.exitHide();
+  hud.setHidden('');
+  player.teleport(player.position.x, player.position.z);
+};
+
+const inspect = (target) => {
+  overlays.showNote('Fuse Box', target.data.message ?? FUSE_MESSAGE);
+};
+
+const toggleKostLamp = () => {
+  kostLampOn = !kostLampOn;
+  applyLighting();
+  audio.play('pickup');
+};
+
+const handleInteractable = async (item) => {
+  const action = item.data.action;
+  if (action === 'prologue-laptop') handlePrologueLaptop();
+  else if (action === 'prologue-phone') handleProloguePhone();
+  else if (action === 'prologue-leave') await leaveKost();
+  else if (action === 'side-entry') await enterHospital();
+  else if (action === 'stairs-up') goToFloorTwo();
+  else if (action === 'stairs-down') goToFloorOne();
+  else if (action === 'key') await pickKey(item);
+  else if (action === 'pickup') await pickItem(item);
+  else if (action === 'hide') hideIn(item);
+  else if (action === 'inspect') inspect(item);
+  else if (action === 'door') await tryExit();
+  else if (action === 'exit') await tryExit();
+  else if (action === 'light-switch') toggleKostLamp();
+};
+
+const resetPrologueState = () => {
+  storyProgress = 'start';
+  storyPhase = 'wake';
+  triggeredEvents.clear();
+  collectedItems.clear();
+  completedObjectives.clear();
+  openedDoors.clear();
+  inventory.restore([]);
+  flashlightBattery = 100;
+  flashlightOn = true;
+  kostLampOn = false;
+  applyLighting();
+  player.stamina = 100;
+  switchToPrologue();
+  player.teleport(prologue.spawn.x, prologue.spawn.z, Math.PI);
+  setPhase('wake', 'Bangun tidur. Ada sesuatu di laptop-mu. Periksa.');
+  audio.stop('ghostNear');
+  audio.stop('bgm');
+  pocongWoken = false;
+  pocong.groundReset();
   enemy.visible = false;
-  scene.add(key, door, enemy);
+  for (const item of chapters.interactables) {
+    item.visible = true;
+  }
+};
 
-  const controls = new PointerLockControls(camera, renderer.domElement);
-  const keys = new Set();
-  const direction = new THREE.Vector2();
-  const screenCenter = new THREE.Vector2();
-  const raycaster = new THREE.Raycaster();
-  const interactables = [key, door];
-  const clock = new THREE.Clock();
-  let progress = 'start';
-  let target = null;
-  let gameOver = false;
-  let battery = 100;
-  let displayedBattery = 100;
-  let stamina = 100;
-  let displayedStamina = 100;
-  let exhausted = false;
-  raycaster.far = 2;
+const newGame = async () => {
+  await saveSystem.clear(SAVE_SLOT);
+  resetPrologueState();
+  hideMenu();
+  startPlaying();
+};
 
-  const updateFlashlightStatus = () => {
-    flashlightStatus.textContent =
-      battery === 0
-        ? 'Senter: Habis'
-        : `Senter: ${flashlight.visible ? 'Nyala' : 'Mati'} ${displayedBattery}%`;
-  };
+const continueGame = async () => {
+  const data = await saveSystem.load(SAVE_SLOT);
+  if (!data) {
+    setContinueEnabled(false);
+    return;
+  }
+  overlays.showLoading('Memuat save...');
+  await applyGameState(data);
+  overlays.hideLoading();
+  hideMenu();
+  startPlaying();
+};
 
-  const interact = () => {
-    if (!target) return;
+const exitGame = () => {
+  const closed = window.close();
+  if (!closed) {
+    overlays.showDialog([
+      {
+        speaker: '',
+        text: 'Exit tidak bisa dilakukan lewat browser. Tutup tab ini untuk keluar game.',
+      },
+    ]);
+  }
+};
 
-    const nextProgress = advanceProgress(progress, target.userData.action);
-    if (nextProgress === progress) {
-      objective.textContent = 'Pintu terkunci. Cari kunci.';
+const mainMenu = () => {
+  state.set('menu');
+  document.body.classList.remove('playing');
+  input.exitLock();
+  input.clear();
+  audio.stopAll();
+  hideMenu();
+  showMenu();
+  const confirmHasSave = () => saveSystem.hasSave(SAVE_SLOT).then((has) => setContinueEnabled(has));
+  confirmHasSave();
+  overlays.hideLoading();
+};
+
+const startPlaying = () => {
+  document.body.classList.add('playing');
+  hud.setObjective(objectiveForPhase());
+  state.set('playing');
+  input.blocked = false;
+  input.clear();
+  input.requestLock(renderer.domElement);
+};
+
+const pauseGame = () => {
+  if (state.state === 'playing' && !intelligibleClear) {
+    state.set('paused');
+    input.exitLock();
+    overlays.showPause();
+  }
+};
+
+const resumeGame = () => {
+  overlays.hidePause();
+  state.set('playing');
+  input.blocked = false;
+  input.clear();
+  input.requestLock(renderer.domElement);
+};
+
+const pauseMenuExit = () => {
+  overlays.hidePause();
+  mainMenu();
+};
+
+const triggerGameOver = () => {
+  audio.stop('ghostNear');
+  audio.stop('bgm');
+  input.exitLock();
+  input.clear();
+  state.set('gameover');
+  overlays.showGameOver(
+    'Kain itu melompat lebih cepat darimu. Tangan dingin menahammu... sebelum semuanya gelap, kamu melihat wajah putih di balik kain itu.',
+    async () => {
+      const data = await saveSystem.load(SAVE_SLOT);
+      if (data) {
+        overlays.showLoading('Mencoba lagi...');
+        await applyGameState(data);
+        overlays.hideLoading();
+        startPlaying();
+      } else {
+        newGame();
+      }
+    },
+    () => mainMenu()
+  );
+};
+
+const enterPress = () => {
+  if (isInventoryOpen()) {
+    const used = tryUseSelected(inventory.items);
+    if (used) audio.play('pickup');
+    return;
+  }
+};
+
+const resumeInput = () => {
+  intelligibleClear = false;
+  input.blocked = false;
+  input.clear();
+  input.requestLock(renderer.domElement);
+  state.set('playing');
+};
+
+const useInventoryItem = (itemId) => {
+  if (itemId === 'battery' && inventory.count('battery') > 0) {
+    if (flashlightBattery >= 100) {
+      showDialog([{ speaker: '', text: 'Baterai senter sudah penuh.' }]);
+      return false;
+    }
+    inventory.remove('battery');
+    flashlightBattery = Math.min(100, flashlightBattery + 40);
+    audio.play('pickup');
+    closeInventory();
+    resumeInput();
+    hud.setFlashlight(flashlightBattery, flashlightOn);
+    return true;
+  }
+  if (itemId === 'key-janitor' || itemId === 'medical-note') {
+    overlays.showDialog([{ speaker: '', text: inventory.info(itemId).description }]);
+    return false;
+  }
+  return false;
+};
+
+const toggleInventory = () => {
+  if (isInventoryOpen()) {
+    closeInventory();
+    resumeInput();
+  } else {
+    audio.play('inventory');
+    openInventory(inventory.items, ITEM_CATALOG);
+    intelligibleClear = true;
+    input.exitLock();
+    input.clear();
+    input.blocked = true;
+    state.set('paused');
+  }
+  hud.setInventory(inventory.items, ITEM_CATALOG);
+};
+
+const toggleMap = () => {
+  if (isMapOpen()) {
+    closeMap();
+    resumeInput();
+  } else {
+    renderMapState();
+    openMap();
+    intelligibleClear = true;
+    input.exitLock();
+    input.clear();
+    input.blocked = true;
+    state.set('paused');
+  }
+};
+
+const renderMapState = () => {
+  renderMap({
+    rooms: hospital.rooms,
+    floor: playerFloor,
+    player,
+    pocong: null,
+    markers: [{ type: 'exit', x: 0, z: -17 }],
+    visibleMarker: currentRoomName(),
+  });
+};
+
+const updatePrompt = () => {
+  const item = raycastInteractable();
+  if (item) {
+    let prompt = item.data.prompt;
+    if (item.data.action === 'light-switch') {
+      prompt = kostLampOn ? 'Matikan lampu' : 'Nyalakan lampu';
+    }
+    if (item.data.requires && !inventory.has(item.data.requires)) {
+      const info = ITEM_CATALOG[item.data.requires];
+      prompt = `${prompt} — Butuh: ${info ? info.name : item.data.requires}`;
+    }
+    hud.setPrompt(prompt);
+  } else if (!player.hidden) {
+    hud.setPrompt('');
+  }
+};
+
+const handleKey = (code, pressed) => {
+  if (!pressed) return;
+  if (state.state !== 'playing' && state.state !== 'paused') return;
+
+  if (overlays.isDialogOpen()) {
+    if (code === 'Enter' || code === 'Escape') {
+      overlays.getDialogAdvanceHandler()({ stopPropagation() {}, target: null });
+    }
+    return;
+  }
+
+  if (isInventoryOpen()) {
+    if (code === 'Tab') toggleInventory();
+    else if (code === 'Enter') enterPress();
+    return;
+  }
+
+  if (isMapOpen()) {
+    if (code === 'KeyM') toggleMap();
+    return;
+  }
+
+  if (state.state === 'paused') {
+    return;
+  }
+
+  if (code === 'KeyE') {
+    if (player.hidden) exitHide();
+    else handleInteractable(raycastInteractable() ?? {});
+  } else if (code === 'KeyF') {
+    flashlightOn = !flashlightOn;
+    if (!flashlightOn) hud.setFlashlight(flashlightBattery, false);
+  } else if (code === 'KeyM') {
+    toggleMap();
+  } else if (code === 'Tab') {
+    toggleInventory();
+  } else if (code === 'Escape') {
+    pauseGame();
+  }
+};
+
+const update = (delta) => {
+  elapsed += delta;
+  playTime += delta;
+
+  const mouse = input.consumeMouseDelta();
+  if (input.locked) {
+    player.look(mouse.x, mouse.y);
+  }
+
+  player.move(delta, input.keys, activeColliders, activeBounds);
+  player.applyView();
+
+  if (player.hidden && player.hiddenCam) {
+    player.position.y = 0;
+    camera.position.copy(player.hiddenCam);
+  }
+
+  updateArea();
+
+  if (flashlightOn) {
+    flashlightBattery = drainBattery(flashlightBattery, delta, 2.4);
+    if (flashlightBattery <= 0) {
+      flashlightBattery = 0;
+      flashlightOn = false;
+    }
+  }
+  flashlight.visible = flashlightOn;
+  flashlight.intensity = flashlightOn ? 2.4 : 0;
+  if (flashlightOn) {
+    aimForward(camera, flashlight, 16, cameraForward);
+    flashlight.position.copy(camera.position);
+  } else {
+    flashlight.position.set(0, -50, 0);
+  }
+
+  if (pocongWoken && hospitalVisible) {
+    pocong.update(delta, player, playerInfo());
+    if (pocong.isAttacking(player)) {
+      triggerGameOver();
       return;
     }
+  }
 
-    progress = nextProgress;
-    target.removeFromParent();
-    interactables.splice(interactables.indexOf(target), 1);
-    target = null;
-    prompt.textContent = '';
-    objective.textContent = progress === 'key' ? 'Buka pintu keluar.' : 'Demo selesai.';
-    enemy.visible = progress === 'key';
-  };
+  updateGhostAudio();
+  updateHospitalEffects(flickerLights, elapsed);
+  updateHud();
+  updatePrompt();
+};
 
-  const endGame = () => {
-    gameOver = true;
-    screenTitle.textContent = 'Game Over';
-    screenHelp.textContent = 'Pocong menangkapmu.';
-    startButton.textContent = 'Ulangi';
-    controls.unlock();
-  };
+const updateHud = () => {
+  hud.setFlashlight(flashlightBattery, flashlightOn);
+  hud.setStamina(player.stamina);
+  hud.setInventory(inventory.items, ITEM_CATALOG);
+  hud.setObjective(objectiveForPhase());
+  if (player.hidden) {
+    hud.setHidden(`Diam! Kamu ngumpet di ${player.hiddenSpot}. [E] untuk keluar.`);
+  } else {
+    hud.setHidden('');
+  }
+};
 
-  startButton.addEventListener('click', () => {
-    if (gameOver) window.location.reload();
-    else controls.lock();
-  });
-  controls.addEventListener('lock', () => uiLayer.classList.add('playing'));
-  controls.addEventListener('unlock', () => {
-    keys.clear();
-    target = null;
-    prompt.textContent = '';
-    uiLayer.classList.remove('playing');
-    startButton.focus();
-  });
-  window.addEventListener('keydown', ({ code, repeat }) => {
-    keys.add(code);
-    if (code === 'KeyE' && !repeat && controls.isLocked) interact();
-    if (code === 'KeyF' && !repeat && controls.isLocked) {
-      if (battery > 0) flashlight.visible = !flashlight.visible;
-      updateFlashlightStatus();
+const clock = new THREE.Clock();
+const animate = () => {
+  requestAnimationFrame(animate);
+  const delta = Math.min(clock.getDelta(), 0.05);
+
+  if (state.state === 'playing') {
+    const blocked = input.blocked || overlays.isOverlayOpen() || isInventoryOpen() || isMapOpen();
+    if (!blocked) {
+      update(delta);
     }
+  }
+
+  renderer.render(scene, camera);
+};
+
+const bootstrap = async () => {
+  initMenu({
+    onContinue: () => continueGame(),
+    onNewGame: () => newGame(),
+    onChapterSelect: (chapter) => {
+      if (chapter === 1) newGame();
+    },
+    onExit: () => exitGame(),
   });
-  window.addEventListener('keyup', ({ code }) => keys.delete(code));
+  overlays.initOverlays({
+    onResume: () => resumeGame(),
+    onSave: () => {
+      attemptSave().then((ok) => {
+        showDialog([{ speaker: '', text: ok ? 'Progress disimpan.' : 'Gagal menyimpan.' }]);
+      });
+    },
+    onPauseExit: () => pauseMenuExit(),
+    onRetry: () => {},
+    onGameOverMenu: () => {},
+    onCompleteMenu: () => {},
+  });
+  initMapUi();
+  initInventoryUi({ onUseItem: useInventoryItem, onCloseInventory: () => {} });
 
-  const animate = () => {
-    requestAnimationFrame(animate);
+  const hasSave = await saveSystem.hasSave(SAVE_SLOT);
+  setContinueEnabled(hasSave);
 
-    const delta = Math.min(clock.getDelta(), 0.05);
-    if (controls.isLocked) {
-      readMovement(keys, direction);
-      const wantsSprint = keys.has('ShiftLeft') || keys.has('ShiftRight');
-      if (!wantsSprint) exhausted = false;
-      const sprinting = wantsSprint && direction.lengthSq() > 0 && !exhausted;
-      const speed = sprinting ? SPRINT_SPEED : WALK_SPEED;
-      controls.moveRight(direction.x * speed * delta);
-      controls.moveForward(direction.y * speed * delta);
-
-      stamina = updateStamina(
-        stamina,
-        delta,
-        sprinting,
-        STAMINA_DRAIN_PER_SECOND,
-        STAMINA_RECOVERY_PER_SECOND
-      );
-      if (stamina === 0) exhausted = true;
-      const staminaPercent = Math.ceil(stamina);
-      if (staminaPercent !== displayedStamina) {
-        displayedStamina = staminaPercent;
-        staminaStatus.textContent = `Stamina: ${displayedStamina}%`;
-      }
-
-      // ponytail: room clamp only; replace with raycast/AABB when obstacles need collision.
-      camera.position.x = THREE.MathUtils.clamp(camera.position.x, -9.5, 9.5);
-      camera.position.z = THREE.MathUtils.clamp(
-        camera.position.z,
-        progress === 'done' ? -12 : -9.5,
-        9.5
-      );
-      camera.position.y = 1.7;
-
-      raycaster.setFromCamera(screenCenter, camera);
-      target = raycaster.intersectObjects(interactables)[0]?.object ?? null;
-      prompt.textContent = target
-        ? `E — ${target.userData.action === 'key' ? 'Ambil kunci' : 'Buka pintu'}`
-        : '';
-
-      if (progress === 'key') {
-        const distance = moveToward(enemy.position, camera.position, 2 * delta);
-        enemy.lookAt(camera.position.x, enemy.position.y, camera.position.z);
-        if (!gameOver && distance < 0.7) endGame();
-      }
-
-      if (flashlight.visible) {
-        battery = drainBattery(battery, delta, BATTERY_DRAIN_PER_SECOND);
-        const batteryPercent = Math.ceil(battery);
-        if (batteryPercent !== displayedBattery) {
-          displayedBattery = batteryPercent;
-          if (battery === 0) flashlight.visible = false;
-          updateFlashlightStatus();
-        }
-      }
+  input.bindLock(renderer.domElement);
+  input.onKey = handleKey;
+  input.onPointerLockChange = (locked) => {
+    if (!locked && state.state === 'playing' && !intelligibleClear && !overlays.isOverlayOpen()) {
+      pauseGame();
     }
-
-    aimForward(camera, flashlight, 14, flashlightDirection);
-
-    renderer.render(scene, camera);
   };
-
-  animate();
 
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
+
+  showMenu();
+  animate();
+
+  if (import.meta.env.DEV) {
+    window.__ambacong = {
+      newGame: () => newGame(),
+      state: () => state.state,
+      phase: () => storyPhase,
+      floor: () => currentFloor,
+      pos: () => ({ x: player.position.x, y: player.position.y, z: player.position.z }),
+      area: () => currentRoomName(),
+      objective: () => objectiveForPhase(),
+      has: (id) => inventory.has(id),
+      lampOn: () => kostLampOn,
+      countBattery: () => inventory.count('battery'),
+      hidden: () => player.hidden,
+      pocongVisible: () => enemy.visible,
+      dialogOpen: () => overlays.isDialogOpen(),
+      newsOpen: () => !document.getElementById('news-screen').hidden,
+      completeOpen: () => !document.getElementById('complete-screen').hidden,
+      mapOpen: () => isMapOpen(),
+      invOpen: () => isInventoryOpen(),
+      teleport: async (x, z, yaw, pitch = 0) => {
+        player.teleport(x, z, yaw);
+        player.pitch = pitch;
+        player.applyView();
+        refreshFloor();
+        updateArea();
+        await sleep(50);
+      },
+      interact: async () => {
+        const hit = raycastInteractable();
+        if (hit) await handleInteractable(hit);
+      },
+      aimAt: async (x, z, tx, tz, ty = 0.7) => {
+        player.teleport(x, z, 0);
+        const dx = tx - x;
+        const dz = tz - z;
+        player.yaw = Math.atan2(-dx, -dz);
+        player.pitch = -Math.atan2(1.7 - ty, Math.hypot(dx, dz));
+        player.applyView();
+        refreshFloor();
+        updateArea();
+        await sleep(60);
+      },
+      pressKey: async (code) => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { code }));
+        await sleep(60);
+        window.dispatchEvent(new KeyboardEvent('keyup', { code }));
+      },
+    };
+    const autotest = new URLSearchParams(location.search).get('autotest');
+    if (autotest === 'ch1') {
+      const { runAutotest } = await import('./dev/autotest.js');
+      setTimeout(() => {
+        runAutotest(window.__ambacong).catch((error) => {
+          console.error('[AUTOTEST] CRASH', error);
+        });
+      }, 400);
+    }
+  }
 };
 
-document.addEventListener('DOMContentLoaded', init);
+bootstrap();
