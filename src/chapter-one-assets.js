@@ -114,7 +114,9 @@ const createMaterials = () => {
     doorTrim: standard(0x241715, { roughness: 0.8 }),
     glass: standard(0xbfd5d2, { roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.35 }),
     floor: textured(0x343438, textureGenerators.floor, 8),
+    hospitalTube: standard(0xfff4dd, { emissive: 0xffdfaa, emissiveIntensity: 1.4, roughness: 0.35 }),
     key: standard(0xd6a800, { emissive: 0x664400, roughness: 0.4, metalness: 0.7 }),
+    lampGlow: standard(0xffd08a, { emissive: 0xff8a2a, emissiveIntensity: 2, roughness: 0.25 }),
     laptop: standard(0x111117, { emissive: 0x02020a, roughness: 0.4, metalness: 0.5 }),
     laptopScreen: standard(0x1f493b, { emissive: 0x133025, roughness: 0.3 }),
     linen: standard(0xc2c0b3, { roughness: 0.98 }),
@@ -131,6 +133,7 @@ const createMaterials = () => {
     tile: standard(0xaab4af, { roughness: 0.72 }),
     wall: textured(0x7f8978, textureGenerators.wall, 6),
     wallDark: textured(0x4b5148, (c, s) => textureGenerators.wall(c, s, 0.62), 6),
+    window: standard(0x142328, { emissive: 0x05090a, roughness: 0.18, metalness: 0.45 }),
     wood: standard(0x5a3d2e, { roughness: 0.8 }),
   };
 };
@@ -147,6 +150,13 @@ const floorPlane = (material, position, scale) => {
   mesh.position.set(...position);
   mesh.scale.set(...scale);
   mesh.rotation.x = -Math.PI / 2;
+  return mesh;
+};
+
+const wallPanel = (material, position, scale) => {
+  const mesh = new THREE.Mesh(planeGeometry, material);
+  mesh.position.set(...position);
+  mesh.scale.set(...scale, 1);
   return mesh;
 };
 
@@ -238,8 +248,14 @@ const createBed = (materials, position, rotationY = 0, isHidingSpot = false) => 
   for (const x of [-0.52, 0.52]) {
     for (const z of [-0.9, 0.9]) {
       bed.add(box(materials.metal, [x, 0.25, z], [0.07, 0.5, 0.07]));
+      const wheel = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), materials.rust);
+      wheel.position.set(x, 0.08, z);
+      bed.add(wheel);
     }
   }
+  bed.add(box(materials.metal, [-0.61, 0.98, 0.1], [0.05, 0.42, 1.15]));
+  bed.add(box(materials.metal, [0.61, 0.98, 0.1], [0.05, 0.42, 1.15]));
+  bed.add(box(materials.metal, [0, 1.02, 0.98], [1.2, 0.65, 0.06]));
   bed.add(box(materials.blood, [-0.28, 0.75, 0.25], [0.34, 0.02, 0.18]));
 
   return bed;
@@ -280,6 +296,61 @@ const createIvStand = (materials, position) => {
   stand.add(box(materials.metal, [0, 0.05, 0], [0.04, 0.04, 0.72]));
 
   return stand;
+};
+
+const createMedicalCart = (materials, position, rotationY = 0) => {
+  const cart = new THREE.Group();
+  cart.position.set(...position);
+  cart.rotation.y = rotationY;
+  for (const y of [0.3, 0.82]) {
+    cart.add(box(materials.metal, [0, y, 0], [1, 0.06, 0.55]));
+  }
+  for (const x of [-0.45, 0.45]) {
+    for (const z of [-0.22, 0.22]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.7, 6), materials.metal);
+      post.position.set(x, 0.55, z);
+      cart.add(post);
+      const wheel = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), materials.rust);
+      wheel.position.set(x, 0.1, z);
+      cart.add(wheel);
+    }
+  }
+  cart.add(box(materials.paper, [-0.2, 0.87, 0], [0.32, 0.03, 0.22]));
+  cart.add(box(materials.battery, [0.25, 0.9, 0], [0.18, 0.12, 0.16]));
+  return cart;
+};
+
+const createHospitalCabinet = (materials, position, rotationY = 0) => {
+  const cabinet = new THREE.Group();
+  cabinet.position.set(...position);
+  cabinet.rotation.y = rotationY;
+  cabinet.add(box(materials.metal, [0, 1, 0], [1.25, 2, 0.42]));
+  cabinet.add(box(materials.wallDark, [0, 1, 0.23], [1.12, 1.86, 0.04]));
+  cabinet.add(box(materials.glass, [-0.29, 1.12, 0.27], [0.5, 1.45, 0.025]));
+  cabinet.add(box(materials.glass, [0.29, 1.12, 0.27], [0.5, 1.45, 0.025]));
+  for (const y of [0.5, 0.95, 1.4]) {
+    cabinet.add(box(materials.metal, [0, y, 0.28], [1.05, 0.035, 0.035]));
+  }
+  cabinet.add(box(materials.metal, [-0.06, 1.05, 0.32], [0.035, 0.28, 0.035]));
+  cabinet.add(box(materials.metal, [0.06, 1.05, 0.32], [0.035, 0.28, 0.035]));
+  return cabinet;
+};
+
+const createPrivacyScreen = (materials, position, rotationY = 0) => {
+  const screen = new THREE.Group();
+  screen.position.set(...position);
+  screen.rotation.y = rotationY;
+  for (const x of [-0.78, 0.78]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.85, 6), materials.metal);
+    pole.position.set(x, 1, 0);
+    screen.add(pole);
+  }
+  screen.add(box(materials.metal, [0, 1.9, 0], [1.65, 0.04, 0.04]));
+  screen.add(wallPanel(materials.linen, [0, 1.15, 0.01], [1.48, 1.35]));
+  const back = wallPanel(materials.linen, [0, 1.15, -0.01], [1.48, 1.35]);
+  back.rotation.y = Math.PI;
+  screen.add(back);
+  return screen;
 };
 
 const createPlasticChair = (materials, position, rotationY = 0) => {
@@ -327,6 +398,9 @@ const createDeskCounter = (materials, position) => {
   counter.add(box(materials.desk, [0, 1.78, 0], [2.7, 0.12, 0.7]));
   counter.add(box(materials.paper, [-0.7, 1.5, 0.36], [0.5, 0.02, 0.02]));
   counter.add(createFuseBoxVisual(materials, [1.1, 1.5, 0.36]));
+  counter.add(box(materials.laptop, [0, 2.02, 0], [0.82, 0.48, 0.08]));
+  counter.add(box(materials.laptopScreen, [0, 2.02, -0.05], [0.68, 0.34, 0.02]));
+  counter.add(box(materials.metal, [0, 1.82, 0], [0.08, 0.34, 0.08]));
 
   return counter;
 };
@@ -357,23 +431,45 @@ const createShelf = (materials, position, rotationY = 0) => {
   return shelf;
 };
 
-const createNeonLight = (materials, position) => {
+const createNeonLight = (materials, position, intensity = 2) => {
   const lightGroup = new THREE.Group();
   lightGroup.name = 'neon-light';
   lightGroup.position.set(...position);
 
   lightGroup.add(box(materials.metal, [0, 0, 0], [1.3, 0.06, 0.18]));
-  lightGroup.add(box(materials.neonTube, [0, -0.05, 0], [1.08, 0.04, 0.04]));
+  lightGroup.add(box(materials.hospitalTube, [0, -0.05, 0], [1.08, 0.04, 0.04]));
 
-  const pointLight = new THREE.PointLight(0x90ee90, 0.5, 7);
+  const pointLight = new THREE.PointLight(0xfff1d6, intensity, 8.5, 1);
   pointLight.position.set(0, -0.35, 0);
-  pointLight.userData.baseIntensity = 0.5;
+  pointLight.userData.baseIntensity = intensity;
   lightGroup.add(pointLight);
 
   return { lightGroup, pointLight };
 };
 
-const createSign = (text, position) => {
+const createCourtyardLamp = (materials, position) => {
+  const lamp = new THREE.Group();
+  lamp.name = 'courtyard-lamp';
+  lamp.position.set(...position);
+
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.36, 0.22, 10), materials.concrete);
+  base.position.y = 0.11;
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.08, 3.45, 10), materials.metal);
+  pole.position.y = 1.9;
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.25, 10), materials.metal);
+  shade.position.set(0.28, 3.48, 0);
+  shade.rotation.z = Math.PI;
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), materials.lampGlow);
+  bulb.position.set(0.28, 3.35, 0);
+  lamp.add(base, pole, box(materials.metal, [0.14, 3.58, 0], [0.42, 0.08, 0.08]), shade, bulb);
+
+  const light = new THREE.PointLight(0xffb45e, 2.1, 9, 2);
+  light.position.set(0.28, 3.3, 0);
+  lamp.add(light);
+  return lamp;
+};
+
+const createSign = (text, position, scale = [3, 0.75]) => {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 128;
@@ -393,7 +489,7 @@ const createSign = (text, position) => {
   texture.colorSpace = THREE.SRGBColorSpace;
   const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
   sign.position.set(...position);
-  sign.scale.set(3, 0.75, 1);
+  sign.scale.set(...scale, 1);
   return sign;
 };
 
@@ -816,6 +912,7 @@ const buildHospital = (materials, pocongImageUrl) => {
   const COURT_Z = 22;
   const F1 = { topZ: 16, bottomZ: -17 };
   const F2 = { topZ: -29.5, bottomZ: -58 };
+  const corridorLightZs = [14, 9, 4, -1, -6, -11, -15, -32, -37, -42, -47, -52, -57];
 
   shell(materials, group, F1.topZ, F1.bottomZ);
   shell(materials, group, F2.topZ, F2.bottomZ);
@@ -830,25 +927,25 @@ const buildHospital = (materials, pocongImageUrl) => {
   wall(materials, group, 0, F2.bottomZ, 28.1, 0.2, materials.wallDark);
 
   wallRowX(materials, group, -4.05, F1.topZ, F1.bottomZ, [
-    [11, 13],
-    [1, 3],
-    [-3, -1],
-    [-13, -11],
+    [10.6, 13.4],
+    [0.6, 3.4],
+    [-3.4, -0.6],
+    [-13.4, -10.6],
   ]);
   wallRowX(materials, group, 4.05, F1.topZ, F1.bottomZ, [
-    [11, 13],
-    [1, 3],
-    [-3, -1],
-    [-13, -11],
+    [10.6, 13.4],
+    [0.6, 3.4],
+    [-3.4, -0.6],
+    [-13.4, -10.6],
   ]);
   wallRowX(materials, group, -4.05, F2.topZ, F2.bottomZ, [
-    [-50, -48],
-    [-37, -35],
+    [-50.4, -47.6],
+    [-37.4, -34.6],
   ]);
   wallRowX(materials, group, 4.05, F2.topZ, F2.bottomZ, [
-    [-57, -55],
-    [-50, -48],
-    [-37, -35],
+    [-57.4, -54.6],
+    [-50.4, -47.6],
+    [-37.4, -34.6],
   ]);
 
   wall(materials, group, -9.05, 8.05, 10.05, 0.2);
@@ -859,6 +956,29 @@ const buildHospital = (materials, pocongImageUrl) => {
   wall(materials, group, 9.05, -8.05, 10.05, 0.2);
   wall(materials, group, -9.05, -44.05, 10.05, 0.2);
   wall(materials, group, 9.05, -44.05, 10.05, 0.2);
+
+  for (const [centerZ, length] of [
+    [-0.5, 33],
+    [-43.75, 28.5],
+  ]) {
+    for (const x of [-3.91, 3.91]) {
+      group.add(box(materials.tile, [x, 0.12, centerZ], [0.04, 0.22, length]));
+      group.add(box(materials.roadBlock, [x, 1.08, centerZ], [0.035, 0.1, length]));
+    }
+  }
+  for (const z of [8.05, 0.05, -8.05, -44.05]) {
+    for (const x of [-9.05, 9.05]) {
+      for (const offset of [-0.12, 0.12]) {
+        group.add(box(materials.tile, [x, 0.12, z + offset], [9.75, 0.22, 0.035]));
+      }
+    }
+  }
+  for (const z of [12, 4, -4, -12, -33, -41, -49, -57]) {
+    group.add(box(materials.concrete, [0, 2.88, z], [8, 0.12, 0.22]));
+  }
+  for (const z of corridorLightZs) {
+    group.add(box(materials.metal, [2.8, 2.98, z], [1.15, 0.035, 0.65]));
+  }
 
   const entrance = createDoor(
     materials,
@@ -901,13 +1021,64 @@ const buildHospital = (materials, pocongImageUrl) => {
     createSign('TANGGA', [4.15, 2.55, -55.2]),
     createSign('ARSIP', [-3.85, 2.55, -49])
   );
+  for (const [label, x, z] of [
+    ['RUANG TUNGGU', -3.78, 12],
+    ['ADMINISTRASI', 3.78, 12],
+    ['RUANG PERIKSA', -3.78, 2],
+    ['JANITOR', 3.78, 2],
+    ['BANGSAL PASIEN', -3.78, -2],
+    ['RUANG OPERASI', 3.78, -2],
+    ['GUDANG', -3.78, -12],
+    ['PERAWATAN A', -3.78, -36],
+    ['PERAWATAN B', 3.78, -36],
+    ['RUANG ISOLASI', 3.78, -49],
+  ]) {
+    group.add(createSign(label, [x, 2.48, z], [1.55, 0.32]));
+  }
   interactables.push(entrance, exitDoor, stairsUp, stairsDown);
 
   group.add(floorPlane(materials.asphalt, [0, 0.01, COURT_Z], [18, 12]));
+  group.add(floorPlane(materials.concrete, [-12.4, 0.02, COURT_Z], [3.4, 12]));
   group.add(box(materials.roadBlock, [-2.4, 0.45, COURT_Z - 2.6], [3.4, 0.32, 0.28]));
   group.add(box(materials.roadBlock, [2.4, 0.45, COURT_Z - 2.6], [3.4, 0.32, 0.28]));
   group.add(box(materials.metal, [-4.2, 0.9, COURT_Z - 2.6], [0.18, 1.8, 0.18]));
   group.add(box(materials.metal, [4.2, 0.9, COURT_Z - 2.6], [0.18, 1.8, 0.18]));
+
+  group.add(wallPanel(materials.wallDark, [0, 4.62, 16.12], [28, 3.1]));
+  group.add(box(materials.concrete, [0, 3.08, 16.1], [28.4, 0.2, 0.42]));
+  group.add(box(materials.concrete, [0, 6.2, 16.1], [28.7, 0.24, 0.5]));
+  group.add(box(materials.concrete, [-13.65, 3.1, 16.1], [0.42, 6.2, 0.48]));
+  group.add(box(materials.concrete, [13.65, 3.1, 16.1], [0.42, 6.2, 0.48]));
+  group.add(createSign('RS KARTINI', [0, 5.72, 16.42], [7, 1.15]));
+
+  for (const [y, xs] of [
+    [1.62, [-8.5, -4.5, -0.5, 3.5, 7.5, 11.5]],
+    [4.55, [-10, -6, -2, 2, 6, 10]],
+  ]) {
+    for (const x of xs) {
+      group.add(wallPanel(materials.window, [x, y, 16.26], [2.15, 1.18]));
+      group.add(box(materials.metal, [x, y, 16.29], [0.055, 1.18, 0.035]));
+      group.add(box(materials.metal, [x, y, 16.29], [2.15, 0.055, 0.035]));
+    }
+  }
+
+  group.add(box(materials.concrete, [-12.4, 3.16, 18], [3.7, 0.18, 4]));
+  for (const x of [-13.75, -11.05]) {
+    const column = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 3.05, 10), materials.metal);
+    column.position.set(x, 1.55, 19.65);
+    group.add(column);
+  }
+  for (const x of [-4, 0, 4]) {
+    group.add(box(materials.tile, [x, 0.035, 24.5], [0.08, 0.03, 4]));
+  }
+  for (const [x, z] of [
+    [-8.1, 19.2],
+    [8.1, 19.2],
+    [-8.1, 25.2],
+    [8.1, 25.2],
+  ]) {
+    group.add(createCourtyardLamp(materials, [x, 0, z]));
+  }
 
   const key = createRustyKey(materials, [-9, 0.78, -50.5]);
   const batteryOne = createPickup(
@@ -945,19 +1116,163 @@ const buildHospital = (materials, pocongImageUrl) => {
   group.add(sideEntryLight);
 
   group.add(createBed(materials, [-10.5, 0, -5], 0, true));
+  group.add(createBed(materials, [-10, 0, 5.2], 0));
   group.add(createBed(materials, [8.9, 0, -2.6], Math.PI / 2));
   group.add(createBed(materials, [-10.5, 0, -36], Math.PI));
+  group.add(createBed(materials, [10, 0, -36], Math.PI));
   group.add(createLocker(materials, [-5.6, 0, -4.6], Math.PI / 2));
   group.add(createLocker(materials, [6, 0, 4.8], -Math.PI / 2));
   group.add(createLocker(materials, [5.8, 0, -36.4], -Math.PI / 2));
   group.add(createBed(materials, [9.7, 0, -50.5], -Math.PI / 2, true));
   group.add(createShelf(materials, [-6.4, 0, -10.5], Math.PI / 2));
   group.add(createShelf(materials, [6.4, 0, 6.5]));
+  group.add(createShelf(materials, [-11.8, 0, -54.5], Math.PI / 2));
+  group.add(createShelf(materials, [-8.2, 0, -56.2]));
   group.add(createIvStand(materials, [-10.5, 0, -6.6]));
+  group.add(createIvStand(materials, [-10.8, 0, 3.8]));
   group.add(createIvStand(materials, [7.4, 0, -0.8]));
+  group.add(createIvStand(materials, [10.8, 0, -37.5]));
   group.add(createIvStand(materials, [8.8, 0, -47.5]));
-  group.add(createPlasticChair(materials, [-10.4, 0, 12.4], 0.3));
-  group.add(createPlasticChair(materials, [-9.4, 0, 12.2], -0.2));
+  group.add(createMedicalCart(materials, [-7.2, 0, 5.5], 0.2));
+  group.add(createMedicalCart(materials, [7.3, 0, -5.3], -0.3));
+  group.add(createMedicalCart(materials, [7.4, 0, -39], Math.PI / 2));
+  group.add(createHospitalCabinet(materials, [-13.45, 0, 3.2], Math.PI / 2));
+  group.add(createHospitalCabinet(materials, [13.45, 0, -5.3], -Math.PI / 2));
+  group.add(createHospitalCabinet(materials, [-13.45, 0, -34], Math.PI / 2));
+  group.add(createHospitalCabinet(materials, [13.45, 0, -39], -Math.PI / 2));
+  group.add(createHospitalCabinet(materials, [13.45, 0, -52.5], -Math.PI / 2));
+  group.add(createPrivacyScreen(materials, [-8.7, 0, 5.2], Math.PI / 2));
+  group.add(createPrivacyScreen(materials, [8.9, 0, -4], 0));
+  group.add(createPrivacyScreen(materials, [-9, 0, -36], 0));
+  group.add(createPrivacyScreen(materials, [8.3, 0, -50.5], Math.PI / 2));
+
+  const examinationRoom = new THREE.Group();
+  examinationRoom.name = 'examination-room-details';
+  examinationRoom.add(box(materials.desk, [-6.3, 0.82, 0.75], [2.35, 0.12, 0.82]));
+  for (const x of [-7.3, -5.3]) {
+    examinationRoom.add(box(materials.metal, [x, 0.4, 0.75], [0.08, 0.8, 0.62]));
+  }
+  examinationRoom.add(box(materials.metal, [-6.3, 1.3, 0.68], [0.9, 0.58, 0.08]));
+  examinationRoom.add(box(materials.laptopScreen, [-6.3, 1.3, 0.63], [0.78, 0.46, 0.025]));
+  examinationRoom.add(box(materials.metal, [-6.3, 0.94, 0.68], [0.12, 0.18, 0.12]));
+  examinationRoom.add(box(materials.laptop, [-6.3, 0.91, 1.02], [0.72, 0.04, 0.25]));
+  examinationRoom.add(createPlasticChair(materials, [-6.3, 0, 1.75], Math.PI));
+
+  examinationRoom.add(box(materials.porcelain, [-13.42, 0.88, 6.55], [0.78, 0.18, 1.15]));
+  examinationRoom.add(box(materials.dirt, [-13.36, 0.98, 6.55], [0.42, 0.02, 0.7]));
+  examinationRoom.add(box(materials.metal, [-13.1, 1.22, 6.55], [0.06, 0.48, 0.06]));
+  examinationRoom.add(box(materials.metal, [-12.96, 1.43, 6.55], [0.28, 0.06, 0.06]));
+
+  examinationRoom.add(box(materials.paper, [-6.25, 1.72, 7.91], [1.35, 1.48, 0.035]));
+  examinationRoom.add(box(materials.blood, [-6.25, 1.82, 7.88], [0.34, 0.82, 0.025]));
+  examinationRoom.add(box(materials.doorTrim, [-6.25, 1.18, 7.87], [0.72, 0.06, 0.025]));
+
+  const examLamp = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.25, 0.32, 0.16, 14),
+    materials.hospitalTube
+  );
+  examLamp.position.set(-11.7, 2.05, 4.8);
+  examinationRoom.add(box(materials.metal, [-12.35, 1.02, 4.8], [0.07, 2.04, 0.07]));
+  examinationRoom.add(box(materials.metal, [-12.02, 2.12, 4.8], [0.7, 0.07, 0.07]));
+  examinationRoom.add(examLamp);
+  const examLight = new THREE.PointLight(0xfff1d6, 0.7, 3.5, 1);
+  examLight.position.set(-11.7, 1.9, 4.8);
+  examinationRoom.add(examLight);
+  group.add(examinationRoom);
+
+  const administrationRoom = new THREE.Group();
+  administrationRoom.name = 'administration-room-details';
+  const administrationCounter = createDeskCounter(materials, [9, 0, 9.25]);
+  administrationCounter.name = 'administration-counter';
+  administrationRoom.add(administrationCounter);
+  for (const x of [7.7, 9, 10.3]) {
+    administrationRoom.add(createPlasticChair(materials, [x, 0, 11.2]));
+  }
+  for (const z of [10, 13.5]) {
+    administrationRoom.add(createHospitalCabinet(materials, [13.45, 0, z], -Math.PI / 2));
+  }
+  administrationRoom.add(box(materials.plastic, [10.05, 1.94, 9.25], [0.5, 0.24, 0.38]));
+  administrationRoom.add(box(materials.paper, [10.05, 2.08, 9.25], [0.35, 0.025, 0.24]));
+  administrationRoom.add(box(materials.wood, [9, 1.72, 15.91], [3.8, 1.15, 0.08]));
+  for (const [x, y] of [
+    [7.9, 1.8],
+    [9, 1.55],
+    [10.1, 1.85],
+  ]) {
+    administrationRoom.add(box(materials.paper, [x, y, 15.86], [0.7, 0.45, 0.025]));
+  }
+  group.add(administrationRoom);
+
+  const patientWard = new THREE.Group();
+  patientWard.name = 'patient-ward-details';
+  patientWard.add(createBed(materials, [-7, 0, -5]));
+  patientWard.add(createIvStand(materials, [-7, 0, -6.65]));
+  patientWard.add(createPrivacyScreen(materials, [-8.75, 0, -5], Math.PI / 2));
+  for (const x of [-10.5, -7]) {
+    patientWard.add(box(materials.metal, [x, 1.85, -7.9], [1.45, 0.42, 0.06]));
+    patientWard.add(box(materials.battery, [x - 0.28, 1.85, -7.85], [0.12, 0.12, 0.035]));
+    patientWard.add(box(materials.blood, [x + 0.28, 1.85, -7.85], [0.12, 0.12, 0.035]));
+    patientWard.add(box(materials.wood, [x + 0.82, 0.4, -6.25], [0.52, 0.8, 0.58]));
+    patientWard.add(box(materials.desk, [x + 0.82, 0.83, -6.25], [0.58, 0.08, 0.64]));
+  }
+  patientWard.add(createPlasticChair(materials, [-12.55, 0, -1.2], Math.PI));
+  const oxygenCylinder = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.19, 1.15, 12),
+    materials.metal
+  );
+  oxygenCylinder.position.set(-13.25, 0.58, -2.3);
+  patientWard.add(oxygenCylinder);
+  patientWard.add(box(materials.battery, [-13.25, 1.22, -2.3], [0.18, 0.16, 0.18]));
+  group.add(patientWard);
+
+  const waitingRoom = new THREE.Group();
+  waitingRoom.name = 'waiting-room-details';
+  for (const [x, z, rotation] of [
+    [-13.15, 10, -Math.PI / 2],
+    [-13.15, 12, -Math.PI / 2],
+    [-13.15, 14, -Math.PI / 2],
+    [-10, 15.15, 0],
+    [-8.8, 15.15, 0],
+    [-7.6, 15.15, 0],
+  ]) {
+    waitingRoom.add(createPlasticChair(materials, [x, 0, z], rotation));
+  }
+  waitingRoom.add(floorPlane(materials.dirt, [-9.7, 0.015, 12.2], [3.2, 2.35]));
+  waitingRoom.add(box(materials.wood, [-9.7, 0.52, 12.2], [1.35, 0.08, 0.75]));
+  waitingRoom.add(box(materials.wood, [-9.7, 0.27, 12.2], [0.5, 0.5, 0.34]));
+  waitingRoom.add(box(materials.paper, [-9.95, 0.58, 12.16], [0.36, 0.025, 0.24]));
+  waitingRoom.add(box(materials.paper, [-9.48, 0.59, 12.28], [0.3, 0.025, 0.2]));
+
+  waitingRoom.add(box(materials.wood, [-10.5, 1.72, 8.2], [3.8, 1.15, 0.08]));
+  for (const [x, y] of [
+    [-11.65, 1.83],
+    [-10.65, 1.55],
+    [-9.55, 1.88],
+  ]) {
+    waitingRoom.add(box(materials.paper, [x, y, 8.25], [0.65, 0.42, 0.025]));
+  }
+
+  waitingRoom.add(box(materials.plastic, [-5.35, 0.64, 14.75], [0.58, 1.28, 0.52]));
+  const waterJug = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.55, 12), materials.glass);
+  waterJug.position.set(-5.35, 1.55, 14.75);
+  waitingRoom.add(waterJug);
+  waitingRoom.add(box(materials.metal, [-5.35, 1.02, 14.42], [0.08, 0.08, 0.2]));
+  waitingRoom.add(box(materials.battery, [-5.22, 0.88, 14.46], [0.08, 0.08, 0.08]));
+  waitingRoom.add(box(materials.blood, [-5.48, 0.88, 14.46], [0.08, 0.08, 0.08]));
+
+  const clock = new THREE.Group();
+  clock.position.set(-6.2, 2.15, 8.2);
+  clock.add(new THREE.Mesh(new THREE.CircleGeometry(0.31, 18), materials.paper));
+  clock.add(new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.035, 6, 18), materials.metal));
+  clock.add(box(materials.doorTrim, [0, 0.07, 0.025], [0.025, 0.22, 0.02]));
+  clock.add(box(materials.doorTrim, [0.08, -0.02, 0.03], [0.17, 0.025, 0.02]));
+  waitingRoom.add(clock);
+
+  const trashBin = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.55, 10), materials.metal);
+  trashBin.position.set(-5.3, 0.28, 9);
+  waitingRoom.add(trashBin);
+  group.add(waitingRoom);
+
   group.add(createPlasticChair(materials, [-10.2, 0, -37.5], 0.5));
   group.add(createFuseBox(materials, [4.8, 0, 6.2], -Math.PI / 2));
 
@@ -967,20 +1282,22 @@ const buildHospital = (materials, pocongImageUrl) => {
     }
   }
 
-  for (const [x, z] of [
-    [0, 12],
-    [0, 4],
-    [0, -4],
-    [0, -12],
-    [-9, 4],
-    [9, 4],
-    [0, -33],
-    [0, -41],
-    [0, -49],
+  for (const [x, z, intensity] of [
+    ...corridorLightZs.map((z) => [0, z, 1.4]),
+    ...[4, -4, -12].flatMap((z) => [
+      [-9, z, 2],
+      [9, z, 2],
+    ]),
+    [-9, 10, 1.6],
+    [-9, 14, 1.6],
+    [9, 12, 2],
+    [-9, -36, 2],
+    [9, -36, 2],
+    [-9, -50, 2],
+    [9, -50, 2],
   ]) {
-    const { lightGroup, pointLight } = createNeonLight(materials, [x, 2.92, z]);
+    const { lightGroup } = createNeonLight(materials, [x, 2.92, z], intensity);
     group.add(lightGroup);
-    flickerLights.push(pointLight);
   }
 
   const rooms = [
