@@ -204,6 +204,15 @@ const inventory = new InventorySystem();
 const pocong = new Pocong(enemy, hospitalColliders);
 pocong.setPatrol(PATROLS[FLOOR_ONE]);
 
+// Ghost step sound dengan volume based distance
+pocong.onStep = () => {
+  const distance = pocong.distanceTo(player.position);
+  const maxHearRange = 25;
+  if (distance > maxHearRange) return;
+  const volume = Math.max(0.1, 1 - distance / maxHearRange);
+  audio.play('ghostStep', volume * 0.7);
+};
+
 let storyPhase = 'wake';
 let storyProgress = 'start';
 let currentFloor = FLOOR_ONE;
@@ -502,6 +511,7 @@ const handlePrologueLaptop = () => {
       if (!triggeredEvents.has('news-read')) {
         triggeredEvents.add('news-read');
         setPhase('laptop', 'Beritanya mengerikan. Teleponmu berdering... Angkat.');
+        audio.startLoop('phoneRing', 0.6);
         attemptSave();
       }
     }
@@ -509,6 +519,8 @@ const handlePrologueLaptop = () => {
 };
 
 const handleProloguePhone = () => {
+  audio.stop('phoneRing');
+  audio.play('phonePickup');
   if (!triggeredEvents.has('phone-answered')) {
     triggeredEvents.add('phone-answered');
     setPhase('phone', 'Raka sudah memperingatkanmu. Keluar dari kamar dan pergilah.');
@@ -537,6 +549,21 @@ const leaveKost = async () => {
   setPhase('outside', 'Malam hari. Akses jalan ditutup — cari jalan masuk yang lain.');
   audio.startLoop('bgm', 0.5);
   overlays.hideLoading();
+  attemptSave();
+};
+
+const handleMainGate = () => {
+  if (storyPhase !== 'outside') return;
+  if (triggeredEvents.has('gate-checked')) return;
+
+  triggeredEvents.add('gate-checked');
+  showDialog([
+    {
+      speaker: '',
+      text: 'Jalan masuknya sudah ditutup nih, aku harus cari jalan lain.',
+    },
+  ]);
+  hud.setObjective('Cari jalan masuk lain. Periksa pintu samping rumah sakit.');
   attemptSave();
 };
 
@@ -708,6 +735,7 @@ const handleInteractable = async (item) => {
   if (action === 'prologue-laptop') handlePrologueLaptop();
   else if (action === 'prologue-phone') handleProloguePhone();
   else if (action === 'prologue-leave') await leaveKost();
+  else if (action === 'main-gate') handleMainGate();
   else if (action === 'side-entry') await enterHospital();
   else if (action === 'stairs-up') goToFloorTwo();
   else if (action === 'stairs-down') goToFloorOne();
@@ -945,18 +973,34 @@ const renderMapState = () => {
 const updatePrompt = () => {
   const item = raycastInteractable();
   if (item) {
+    const action = item.data.action;
+
+    // Objective gating - hide prompts sebelum waktunya
+    if (action === 'prologue-phone' && storyPhase === 'wake') {
+      hud.setPrompt('');
+      return;
+    }
+    if (action === 'prologue-leave' && !triggeredEvents.has('phone-answered')) {
+      hud.setPrompt('');
+      return;
+    }
+    if (action === 'main-gate' && storyPhase !== 'outside') {
+      hud.setPrompt('');
+      return;
+    }
+    if (action === 'side-entry' && !triggeredEvents.has('gate-checked')) {
+      hud.setPrompt('');
+      return;
+    }
+
     let prompt = item.data.prompt;
-    if (item.data.action === 'bathroom-door') {
+    if (action === 'bathroom-door') {
       prompt = openedDoors.has('bathroom-door')
         ? 'Tutup pintu kamar mandi'
         : 'Buka pintu kamar mandi';
     }
-    if (item.data.action === 'tv-toggle') {
+    if (action === 'tv-toggle') {
       prompt = tvOn ? 'Matikan TV' : 'Nyalakan TV';
-    }
-    if (item.data.action === 'prologue-leave' && !triggeredEvents.has('phone-answered')) {
-      hud.setPrompt('');
-      return;
     }
     if (item.data.requires && !inventory.has(item.data.requires)) {
       const info = ITEM_CATALOG[item.data.requires];
@@ -1029,7 +1073,7 @@ const update = (delta) => {
   updateArea();
 
   if (flashlightOn) {
-    flashlightBattery = drainBattery(flashlightBattery, delta, 2.4);
+    flashlightBattery = drainBattery(flashlightBattery, delta, 1.2);
     if (flashlightBattery <= 0) {
       flashlightBattery = 0;
       flashlightOn = false;

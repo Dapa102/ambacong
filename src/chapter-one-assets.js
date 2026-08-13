@@ -469,6 +469,148 @@ const createCourtyardLamp = (materials, position) => {
   return lamp;
 };
 
+const createTree = (materials, position, scale = 1) => {
+  const tree = new THREE.Group();
+  tree.name = 'tree';
+  tree.position.set(...position);
+
+  // Trunk (batang pohon)
+  const trunkGeometry = new THREE.CylinderGeometry(0.18 * scale, 0.25 * scale, 2.8 * scale, 8);
+  const trunk = new THREE.Mesh(trunkGeometry, materials.wood);
+  trunk.position.y = 1.4 * scale;
+  tree.add(trunk);
+
+  // Foliage (daun - 3 layer sphere untuk variasi)
+  const foliageGeometry = new THREE.SphereGeometry(0.85 * scale, 8, 7);
+  const foliageMaterial = new THREE.MeshStandardMaterial({
+    color: 0x1a3d1a,
+    roughness: 0.95,
+  });
+
+  const foliageBottom = new THREE.Mesh(foliageGeometry, foliageMaterial);
+  foliageBottom.position.y = 2.5 * scale;
+  foliageBottom.scale.set(1.2, 0.9, 1.2);
+  tree.add(foliageBottom);
+
+  const foliageMiddle = new THREE.Mesh(foliageGeometry, foliageMaterial);
+  foliageMiddle.position.y = 3.1 * scale;
+  foliageMiddle.scale.set(1, 1, 1);
+  tree.add(foliageMiddle);
+
+  const foliageTop = new THREE.Mesh(foliageGeometry, foliageMaterial);
+  foliageTop.position.y = 3.6 * scale;
+  foliageTop.scale.set(0.7, 0.8, 0.7);
+  tree.add(foliageTop);
+
+  return tree;
+};
+
+const createGround = (materials, position, size) => {
+  const ground = new THREE.Group();
+  ground.name = 'ground-patch';
+  ground.position.set(...position);
+
+  // Tanah utama
+  const groundPlane = floorPlane(materials.dirt, [0, 0.005, 0], size);
+  ground.add(groundPlane);
+
+  // Tambah rumput-rumput kecil (simple box untuk performa)
+  const grassMaterial = new THREE.MeshStandardMaterial({
+    color: 0x2d4a2d,
+    roughness: 1,
+  });
+
+  const grassCount = Math.floor((size[0] * size[1]) / 8);
+  for (let i = 0; i < grassCount; i += 1) {
+    const grassBlade = box(
+      grassMaterial,
+      [
+        (Math.random() - 0.5) * size[0] * 0.9,
+        0.08,
+        (Math.random() - 0.5) * size[1] * 0.9,
+      ],
+      [0.04, 0.16, 0.02]
+    );
+    grassBlade.rotation.y = Math.random() * Math.PI * 2;
+    ground.add(grassBlade);
+  }
+
+  return ground;
+};
+
+const createFence = (materials, position, width, label, action = 'fence', prompt = 'Periksa pagar') => {
+  const fence = new THREE.Group();
+  fence.name = label;
+  fence.position.set(...position);
+
+  makeInteractable(fence, { action, prompt });
+
+  // Fence posts
+  const postCount = Math.ceil(width / 2.5) + 1;
+  const postSpacing = width / (postCount - 1);
+
+  for (let i = 0; i < postCount; i += 1) {
+    const xPos = -width / 2 + i * postSpacing;
+    const post = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.08, 0.1, 2.2, 6),
+      materials.wood
+    );
+    post.position.set(xPos, 1.1, 0);
+    fence.add(post);
+  }
+
+  // Horizontal rails
+  for (const y of [0.6, 1.1, 1.6]) {
+    const rail = box(materials.wood, [0, y, 0], [width + 0.2, 0.12, 0.12]);
+    fence.add(rail);
+  }
+
+  // Wire mesh (kawat pagar)
+  const wireMaterial = new THREE.MeshStandardMaterial({
+    color: 0x4a4a4a,
+    roughness: 0.7,
+    metalness: 0.3,
+    transparent: true,
+    opacity: 0.6,
+  });
+
+  const wireMesh = box(wireMaterial, [0, 1.1, 0], [width, 1.4, 0.02]);
+  fence.add(wireMesh);
+
+  return fence;
+};
+
+const createBoardedWindow = (materials, position, size = [2.15, 1.18]) => {
+  const boarded = new THREE.Group();
+  boarded.name = 'boarded-window';
+  boarded.position.set(...position);
+
+  // Window frame
+  boarded.add(wallPanel(materials.window, [0, 0, 0], size));
+  boarded.add(box(materials.metal, [0, 0, 0.02], [0.055, size[1], 0.035]));
+  boarded.add(box(materials.metal, [0, 0, 0.02], [size[0], 0.055, 0.035]));
+
+  // Wooden boards diagonal
+  const boardMaterial = new THREE.MeshStandardMaterial({
+    color: 0x3d2b1f,
+    roughness: 0.9,
+  });
+
+  for (let i = 0; i < 3; i += 1) {
+    const board = box(boardMaterial, [0, -size[1] / 3 + i * (size[1] / 3), 0.05], [size[0] * 1.1, 0.18, 0.08]);
+    board.rotation.z = (Math.PI / 12) * (i % 2 === 0 ? 1 : -1);
+    boarded.add(board);
+  }
+
+  return boarded;
+};
+
+const createBloodStain = (materials, position, size = [0.4, 0.2]) => {
+  const stain = wallPanel(materials.blood, position, size);
+  stain.name = 'blood-stain';
+  return stain;
+};
+
 const createSign = (text, position, scale = [3, 0.75]) => {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
@@ -516,6 +658,31 @@ const createPocong = (materials, position, imageUrl) => {
   face.position.set(0, 1.78, -0.36);
   face.scale.z = -1;
   pocong.add(face);
+
+  // Mata merah menyala (glow effect)
+  const leftEye = new THREE.Mesh(
+    new THREE.SphereGeometry(0.045, 10, 8),
+    new THREE.MeshBasicMaterial({
+      color: 0xff0000,
+      emissive: 0xff0000,
+      emissiveIntensity: 2.5,
+    })
+  );
+  leftEye.position.set(-0.11, 1.82, -0.32);
+  pocong.add(leftEye);
+
+  const rightEye = leftEye.clone();
+  rightEye.position.set(0.11, 1.82, -0.32);
+  pocong.add(rightEye);
+
+  // Point lights untuk mata menyala
+  const leftEyeLight = new THREE.PointLight(0xff0000, 0.8, 1.2);
+  leftEyeLight.position.set(-0.11, 1.82, -0.28);
+  pocong.add(leftEyeLight);
+
+  const rightEyeLight = new THREE.PointLight(0xff0000, 0.8, 1.2);
+  rightEyeLight.position.set(0.11, 1.82, -0.28);
+  pocong.add(rightEyeLight);
 
   const topTie = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.48, 7), materials.pocongCloth);
   topTie.position.y = 2.23;
@@ -1037,6 +1204,53 @@ const buildHospital = (materials, pocongImageUrl) => {
   }
   interactables.push(entrance, exitDoor, stairsUp, stairsDown);
 
+  // Courtyard exterior environment - expanded horror atmosphere
+  // Tanah lebih luas dengan dead leaves
+  group.add(createGround(materials, [-10, 0, COURT_Z + 4], [10, 10]));
+  group.add(createGround(materials, [10, 0, COURT_Z + 4], [10, 10]));
+  group.add(createGround(materials, [0, 0, COURT_Z + 8], [16, 6]));
+  group.add(createGround(materials, [-12, 0, COURT_Z - 1], [6, 8]));
+  group.add(createGround(materials, [12, 0, COURT_Z - 1], [6, 8]));
+
+  // Perbanyak pohon - forest feel
+  group.add(createTree(materials, [-11, 0, COURT_Z + 6], 1.2));
+  group.add(createTree(materials, [-8, 0, COURT_Z + 2], 0.95));
+  group.add(createTree(materials, [-5, 0, COURT_Z + 8], 1.05));
+  group.add(createTree(materials, [-3, 0, COURT_Z + 1], 0.85));
+  group.add(createTree(materials, [3, 0, COURT_Z + 7.5], 1.1));
+  group.add(createTree(materials, [5, 0, COURT_Z + 2.5], 0.9));
+  group.add(createTree(materials, [8, 0, COURT_Z + 5], 1));
+  group.add(createTree(materials, [11, 0, COURT_Z + 1], 1.15));
+  group.add(createTree(materials, [-13, 0, COURT_Z - 2], 1.3));
+  group.add(createTree(materials, [13, 0, COURT_Z - 1.5], 1.25));
+  group.add(createTree(materials, [0, 0, COURT_Z + 10], 0.95));
+  group.add(createTree(materials, [-7, 0, COURT_Z + 9.5], 1.08));
+  group.add(createTree(materials, [6, 0, COURT_Z + 9], 1.02));
+
+  // Dead/bare trees untuk variasi horror
+  for (const [x, z, scale] of [
+    [-9.5, COURT_Z + 5, 0.8],
+    [9, COURT_Z + 8, 0.75],
+    [-4, COURT_Z + 11, 0.7],
+  ]) {
+    const bareTree = createTree(materials, [x, 0, z], scale);
+    // Remove foliage untuk dead tree effect
+    bareTree.children = bareTree.children.filter((c) => c.geometry?.type === 'CylinderGeometry');
+    group.add(bareTree);
+  }
+
+  // Pagar interaktif yang menghalangi jalan masuk utama
+  const mainGate = createFence(
+    materials,
+    [0, 0, COURT_Z + 3.5],
+    14,
+    'main-gate-fence',
+    'main-gate',
+    'Periksa pagar'
+  );
+  group.add(mainGate);
+  interactables.push(mainGate);
+
   group.add(floorPlane(materials.asphalt, [0, 0.01, COURT_Z], [18, 12]));
   group.add(floorPlane(materials.concrete, [-12.4, 0.02, COURT_Z], [3.4, 12]));
   group.add(box(materials.roadBlock, [-2.4, 0.45, COURT_Z - 2.6], [3.4, 0.32, 0.28]));
@@ -1051,16 +1265,27 @@ const buildHospital = (materials, pocongImageUrl) => {
   group.add(box(materials.concrete, [13.65, 3.1, 16.1], [0.42, 6.2, 0.48]));
   group.add(createSign('RS KARTINI', [0, 5.72, 16.42], [7, 1.15]));
 
+  // Windows - some boarded up untuk horror
   for (const [y, xs] of [
     [1.62, [-8.5, -4.5, -0.5, 3.5, 7.5, 11.5]],
     [4.55, [-10, -6, -2, 2, 6, 10]],
   ]) {
     for (const x of xs) {
-      group.add(wallPanel(materials.window, [x, y, 16.26], [2.15, 1.18]));
-      group.add(box(materials.metal, [x, y, 16.29], [0.055, 1.18, 0.035]));
-      group.add(box(materials.metal, [x, y, 16.29], [2.15, 0.055, 0.035]));
+      // Beberapa window di-board up (30%)
+      if (Math.abs(x + 8.5) < 0.1 || Math.abs(x - 7.5) < 0.1 || Math.abs(x + 10) < 0.1 || Math.abs(x - 10) < 0.1) {
+        group.add(createBoardedWindow(materials, [x, y, 16.26]));
+      } else {
+        group.add(wallPanel(materials.window, [x, y, 16.26], [2.15, 1.18]));
+        group.add(box(materials.metal, [x, y, 16.29], [0.055, 1.18, 0.035]));
+        group.add(box(materials.metal, [x, y, 16.29], [2.15, 0.055, 0.035]));
+      }
     }
   }
+
+  // Blood stains di dinding facade
+  group.add(createBloodStain(materials, [-7, 2.8, 16.32], [0.6, 0.8]));
+  group.add(createBloodStain(materials, [4, 3.5, 16.32], [0.4, 0.5]));
+  group.add(createBloodStain(materials, [9, 1.8, 16.32], [0.5, 0.6]));
 
   group.add(box(materials.concrete, [-12.4, 3.16, 18], [3.7, 0.18, 4]));
   for (const x of [-13.75, -11.05]) {
@@ -1283,18 +1508,18 @@ const buildHospital = (materials, pocongImageUrl) => {
   }
 
   for (const [x, z, intensity] of [
-    ...corridorLightZs.map((z) => [0, z, 1.4]),
+    ...corridorLightZs.map((z) => [0, z, 2.2]),
     ...[4, -4, -12].flatMap((z) => [
-      [-9, z, 2],
-      [9, z, 2],
+      [-9, z, 2.8],
+      [9, z, 2.8],
     ]),
-    [-9, 10, 1.6],
-    [-9, 14, 1.6],
-    [9, 12, 2],
-    [-9, -36, 2],
-    [9, -36, 2],
-    [-9, -50, 2],
-    [9, -50, 2],
+    [-9, 10, 2.4],
+    [-9, 14, 2.4],
+    [9, 12, 2.8],
+    [-9, -36, 2.8],
+    [9, -36, 2.8],
+    [-9, -50, 2.8],
+    [9, -50, 2.8],
   ]) {
     const { lightGroup } = createNeonLight(materials, [x, 2.92, z], intensity);
     group.add(lightGroup);

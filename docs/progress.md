@@ -116,3 +116,45 @@ Perintah: `npm test`, `npm run test:runtime`, `npm run lint`, `npm run format:ch
 - **Ruang tamu** di sisi timur-selatan: **sofa 3 dudukan + backrest + armrest**, meja TV, dan **TV yang bisa ON/OFF** (`E`; prompt dinamis "Nyalakan/Matikan TV") — layar menyala emissive biru + glow light saat on, mati hitam saat off. State TV ikut tersimpan di save.
 - Pembatas kamar tidur/ruang tamu di z=-1.5 dengan bukaan pintu ber-frame (x 1.8..3.4). Aliran: kamar tidur → ruang tamu → (timur) TV & sofa, (barat) dapur; kamar mandi tetap di barat-utara.
 - Runtime suite kini berisi **36 cek** setelah interaksi saklar lampu dihapus. Unit 16/16 dan lint tetap lolos.
+
+## Environment Luar Rumah Sakit & Model Pocong Baru (13 Agustus 2026 — sesi ini)
+
+- **Model Pocong dengan Mata Merah Menyala**: tekstur wajah dari `assets/ambacong.png` kini dilengkapi dengan mata merah emissive (intensity 2.5) + point lights merah di posisi mata untuk efek glow yang lebih nyata dan menakutkan.
+- **Area Courtyard Diperkaya**: halaman rumah sakit kini memiliki 3 patch tanah dengan rumput-rumput kecil acak yang tersebar, menciptakan suasana luar yang lebih natural dan realistis.
+- **6 Pohon dengan Variasi**: pohon-pohon (batang kayu + 3 layer foliage hijau gelap) ditanam di sekitar courtyard dengan ukuran bervariasi (scale 0.85–1.2) untuk variasi visual dan kedalaman scene.
+- **Pagar Interaktif di Jalan Utama**: pagar kayu dengan posts, horizontal rails, dan wire mesh dipasang di depan rumah sakit. Saat pemain mendekati dan berinteraksi (`E`), muncul dialog "Jalan masuknya sudah ditutup nih, aku harus cari jalan lain" dan objektif berubah menjadi "Cari jalan masuk lain. Periksa pintu samping rumah sakit."
+- **Trigger Event Gate-Checked**: interaksi pagar hanya terjadi sekali per playthrough; event `gate-checked` dicatat di save untuk mencegah dialog berulang.
+- Semua test lolos: lint, unit 16/16, build berhasil (bundle 606 KB).
+
+## Audio Baru & Environment Expansion (13 Agustus 2026 — sesi berikutnya)
+
+- **Audio Files Baru Terimplementasi**: 3 sound effect baru ditambahkan ke `assets/audio/sfx/`:
+  - `langkah-hantu.wav` (17.5 KB) — suara langkah pocong saat hop, volume based distance (max 25 unit range)
+  - `telpon-bunyi.ogg` (18 KB, compressed dari 992 KB wav) — ring tone telepon di prologue, loop saat fase laptop
+  - `suara-angkat-telpon.wav` (27.4 KB) — sound effect saat player angkat telepon
+- **Phone Interaction Enhanced**: telepon ring loop mulai setelah baca news, stop + play pickup sound saat angkat. Audio system diperluas untuk handle 3 sound baru (phoneRing set loop true).
+- **Ghost Step Sound**: pocong sekarang play step sound setiap hop cycle (callback `onStep`), volume berkurang sesuai jarak player (fade dari 25 unit).
+- **Courtyard Dramatically Expanded**: 13 pohon hidup + 3 dead/bare trees (no foliage) tersebar di halaman. Tanah diperluas 5 patch ground untuk forest feel yang lebih natural.
+- **Building Horror Details**: 
+  - 4 boarded windows (papan diagonal di window facade)
+  - 3 blood stain di dinding luar rumah sakit
+  - Helper functions: `createBoardedWindow`, `createBloodStain`
+- **Struktur Audio Dirapikan**: semua SFX dipindah ke `assets/audio/sfx/`, music di `assets/audio/music/`.
+- Lint pass, build 607.5 KB bundle, audio total ~6.9 MB (compressed).
+
+## Gameplay Balance & Objective Gating (13 Agustus 2026 — sesi lanjut)
+
+- **Pocong Chase Speed Tuning**: 4.4 → 3.8 (lebih lambat dari player sprint 6.4, player bisa kabur lebih mudah)
+- **Flashlight Drain Slower**: 2.4%/s → 1.2%/s (battery awet ~83 detik vs ~42 detik sebelumnya)
+- **Hospital Lighting Brighter**: 
+  - Koridor: 1.4 → 2.2 intensity
+  - Side rooms: 2.0 → 2.8 intensity
+  - Tunggu/lobby: 1.6 → 2.4 intensity
+  - Ruangan tidak terlalu gelap, player bisa navigasi lebih nyaman
+- **Objective Gating Strict**: 
+  - Telepon tidak bisa diinteraksi sebelum baca news (fase wake)
+  - Pintu kost terkunci sampai telepon diangkat
+  - Pagar tidak bisa diperiksa sampai fase outside
+  - Pintu samping tidak muncul prompt sebelum pagar diperiksa (`gate-checked`)
+  - Prompt hilang total untuk interaksi prematur (tidak ada hint)
+- Semua perubahan tested: lint pass, build 607.6 KB.

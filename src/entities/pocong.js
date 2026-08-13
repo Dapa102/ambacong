@@ -6,7 +6,7 @@ const SIGHT_RANGE = 13;
 const SIGHT_RANGE_LIT = 18;
 const SOUND_RANGE = 9;
 const SIGHT_CONE = Math.cos((58 * Math.PI) / 180);
-const CHASE_SPEED = 4.4;
+const CHASE_SPEED = 3.8;
 const PATROL_SPEED = 1.7;
 const ATTACK_DISTANCE = 2.0;
 const LOST_DURATION = 7;
@@ -25,6 +25,8 @@ export class Pocong {
     this.chaseRemaining = 0;
     this.facing = new THREE.Vector3(0, 0, -1);
     this.basePosition = mesh.position.clone();
+    this.lastStepPhase = 0;
+    this.onStep = null;
   }
 
   setPatrol(points) {
@@ -128,6 +130,13 @@ export class Pocong {
       this.mesh.rotation.y = Math.atan2(look.x, look.z);
     }
     this.mesh.visible = this.state !== 'dormant';
+
+    // Trigger step sound saat land (theta cross 0 or 2π)
+    const currentCycle = Math.floor(this.phase * hopFreq);
+    if (currentCycle > this.lastStepPhase && this.onStep && this.state !== 'dormant') {
+      this.onStep();
+      this.lastStepPhase = currentCycle;
+    }
   }
 
   checkDetect(player, info) {

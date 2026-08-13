@@ -1,12 +1,18 @@
 import pickupUrl from '../../assets/audio/sfx/ambil-barang.wav';
 import inventoryUrl from '../../assets/audio/sfx/buka-inventori.wav';
 import ghostNearUrl from '../../assets/audio/sfx/suara-hantu-dekat.ogg';
+import ghostStepUrl from '../../assets/audio/sfx/langkah-hantu.wav';
+import phoneRingUrl from '../../assets/audio/sfx/telpon-bunyi.ogg';
+import phonePickupUrl from '../../assets/audio/sfx/suara-angkat-telpon.wav';
 import bgmUrl from '../../assets/audio/music/backsound-game.ogg';
 
 const AUDIO_PATHS = {
   pickup: pickupUrl,
   inventory: inventoryUrl,
   ghostNear: ghostNearUrl,
+  ghostStep: ghostStepUrl,
+  phoneRing: phoneRingUrl,
+  phonePickup: phonePickupUrl,
   bgm: bgmUrl,
 };
 
@@ -23,7 +29,7 @@ export class AudioSystem {
     if (!this.pool.has(name)) {
       const audio = new Audio(AUDIO_PATHS[name]);
       audio.preload = name === 'bgm' ? 'none' : 'auto';
-      audio.loop = name === 'bgm' || name === 'ghostNear';
+      audio.loop = name === 'bgm' || name === 'ghostNear' || name === 'phoneRing';
       this.pool.set(name, audio);
     }
     return this.pool.get(name);
