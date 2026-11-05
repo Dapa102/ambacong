@@ -7,6 +7,7 @@ import { SaveSystem, SAVE_SLOT } from './systems/save-system.js';
 import { AudioSystem } from './systems/audio-system.js';
 import { buildColliders } from './systems/collision-system.js';
 import { NOISE, movementNoise } from './systems/noise-system.js';
+import { createPostProcessing } from './systems/post-processing.js';
 import { InventorySystem, ITEM_CATALOG } from './systems/inventory-system.js';
 import { Player } from './entities/player.js';
 import { Pocong } from './entities/pocong.js';
@@ -99,37 +100,35 @@ let hospitalVisible = false;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// Anti-aliasing ditangani MSAA di render target post-processing.
+const renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
+renderer.toneMappingExposure = 1.3;
 
-let shadowEnabled = true;
-let shadowMapType = THREE.PCFSoftShadowMap;
-let moonShadowSize = 1024;
-let flashlightCastsShadow = true;
-try {
-  const gl = renderer.getContext();
-  const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-  const device = debugInfo
-    ? String(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)).toLowerCase()
-    : '';
-  if (/swiftshader|llvmpipe|softpipe|software/.test(device)) {
-    shadowEnabled = false;
-    shadowMapType = THREE.PCFShadowMap;
-    moonShadowSize = 512;
-    flashlightCastsShadow = false;
+// Renderer software (headless test, VM tanpa GPU) memakai preset ringan.
+const detectLowQuality = () => {
+  // ponytail: override kualitas lewat URL (?quality=high|low) sampai ada menu Settings (F6).
+  const override = new URLSearchParams(location.search).get('quality');
+  if (override) return override === 'low';
+  try {
+    const gl = renderer.getContext();
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    const device = debugInfo
+      ? String(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)).toLowerCase()
+      : '';
+    return /swiftshader|llvmpipe|softpipe|software/.test(device);
+  } catch {
+    return true;
   }
-} catch {
-  shadowEnabled = false;
-  shadowMapType = THREE.PCFShadowMap;
-  moonShadowSize = 512;
-  flashlightCastsShadow = false;
-}
+};
+const lowQuality = detectLowQuality();
+const shadowEnabled = !lowQuality;
+const moonShadowSize = lowQuality ? 512 : 1024;
+const flashlightCastsShadow = !lowQuality;
 renderer.shadowMap.enabled = shadowEnabled;
-renderer.shadowMap.type = shadowMapType;
+renderer.shadowMap.type = lowQuality ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 document.getElementById('app').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -138,6 +137,10 @@ scene.fog = new THREE.FogExp2(0x070a0f, 0.03);
 
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
 scene.add(camera);
+const postFx = createPostProcessing(renderer, scene, camera, {
+  bloom: !lowQuality,
+  msaa: !lowQuality,
+});
 
 const ambientLight = new THREE.AmbientLight(0x2a3450, 1.35);
 const hemisphereLight = new THREE.HemisphereLight(0x131a26, 0x241a12, 0.35);
@@ -167,7 +170,7 @@ const applyLighting = () => {
   for (const lamp of kostLamps) {
     lamp.intensity = lampOn ? lamp.userData.baseIntensity : 0;
   }
-  if (kostLampBulb) kostLampBulb.emissiveIntensity = lampOn ? 2.6 : 0;
+  if (kostLampBulb) kostLampBulb.emissiveIntensity = lampOn ? 1.5 : 0;
 };
 applyLighting();
 
@@ -1134,7 +1137,7 @@ const animate = () => {
     }
   }
 
-  renderer.render(scene, camera);
+  postFx.render(clock.elapsedTime);
 };
 
 const bootstrap = async () => {
@@ -1176,6 +1179,7 @@ const bootstrap = async () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    postFx.setSize(window.innerWidth, window.innerHeight);
   });
 
   showMenu();

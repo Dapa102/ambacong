@@ -3,7 +3,9 @@ import * as THREE from 'three';
 const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
 const planeGeometry = new THREE.PlaneGeometry(1, 1);
 
-const makeCanvasTexture = (size, draw, repeat) => {
+// Tekstur prosedural memakai UV dalam satuan meter (lihat worldUvGeometry), jadi
+// `worldSize` = lebar area dunia yang ditutup satu salinan tekstur.
+const makeCanvasTexture = (size, draw, worldSize) => {
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
@@ -11,9 +13,9 @@ const makeCanvasTexture = (size, draw, repeat) => {
   draw(context, size);
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(repeat, repeat);
+  texture.repeat.set(1 / worldSize, 1 / worldSize);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
+  texture.anisotropy = 8;
   return texture;
 };
 
@@ -25,14 +27,71 @@ const speckle = (context, size, count, alpha) => {
   }
 };
 
+// Bercak lembut yang bisa diulang (tile) tanpa jahitan: digambar juga di sisi seberang.
+const blotch = (context, size, x, y, radius, color) => {
+  for (const dx of [-size, 0, size]) {
+    for (const dy of [-size, 0, size]) {
+      const gradient = context.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, radius);
+      gradient.addColorStop(0, color);
+      gradient.addColorStop(1, 'rgba(0,0,0,0)');
+      context.fillStyle = gradient;
+      context.fillRect(x + dx - radius, y + dy - radius, radius * 2, radius * 2);
+    }
+  }
+};
+
+const scatterBlotches = (context, size, count, minRadius, extraRadius, color) => {
+  for (let i = 0; i < count; i += 1) {
+    const radius = minRadius + Math.random() * extraRadius;
+    blotch(context, size, Math.random() * size, Math.random() * size, radius, color);
+  }
+};
+
+// Rembesan air: garis vertikal tipis yang memudar ke bawah.
+const drips = (context, size, count, color) => {
+  for (let i = 0; i < count; i += 1) {
+    const x = Math.random() * size;
+    const length = size * (0.2 + Math.random() * 0.6);
+    const width = 2 + Math.random() * 7;
+    const gradient = context.createLinearGradient(0, 0, 0, length);
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    context.fillStyle = gradient;
+    context.fillRect(x, 0, width, length);
+  }
+};
+
 const textureGenerators = {
   floor(context, size) {
-    context.fillStyle = '#2e2e33';
-    context.fillRect(0, 0, size, size);
     const tiles = 4;
     const step = size / tiles;
-    context.strokeStyle = '#24242a';
-    context.lineWidth = 2;
+    for (let tx = 0; tx < tiles; tx += 1) {
+      for (let ty = 0; ty < tiles; ty += 1) {
+        const tone = 104 + Math.random() * 22;
+        context.fillStyle = `rgb(${tone},${tone + 2},${tone - 4})`;
+        context.fillRect(tx * step, ty * step, step, step);
+      }
+    }
+    speckle(context, size, 2600, 0.05);
+    scatterBlotches(context, size, 18, 20, 70, 'rgba(10,8,6,0.28)');
+    // Retak halus.
+    context.strokeStyle = 'rgba(8,8,10,0.55)';
+    context.lineWidth = 1.2;
+    for (let i = 0; i < 7; i += 1) {
+      let x = Math.random() * size;
+      let y = Math.random() * size;
+      context.beginPath();
+      context.moveTo(x, y);
+      for (let j = 0; j < 5; j += 1) {
+        x += (Math.random() - 0.5) * 60;
+        y += (Math.random() - 0.5) * 60;
+        context.lineTo(x, y);
+      }
+      context.stroke();
+    }
+    // Nat ubin (paling gelap, jadi paling dalam di bump map).
+    context.strokeStyle = '#2a2a2a';
+    context.lineWidth = 5;
     for (let i = 0; i <= tiles; i += 1) {
       context.beginPath();
       context.moveTo(i * step, 0);
@@ -43,45 +102,48 @@ const textureGenerators = {
       context.lineTo(size, i * step);
       context.stroke();
     }
-    speckle(context, size, 700, 0.05);
-    context.fillStyle = 'rgba(0,0,0,0.12)';
-    for (let i = 0; i < 26; i += 1) {
-      context.beginPath();
-      context.arc(Math.random() * size, Math.random() * size, 6 + Math.random() * 14, 0, Math.PI * 2);
-      context.fill();
-    }
   },
   wall(context, size, tone = 1) {
     context.fillStyle = `rgb(${Math.round(0x7f * tone)},${Math.round(0x89 * tone)},${Math.round(0x78 * tone)})`;
     context.fillRect(0, 0, size, size);
-    speckle(context, size, 1400, 0.06);
-    context.fillStyle = 'rgba(24,27,20,0.16)';
-    for (let i = 0; i < 5; i += 1) {
+    scatterBlotches(context, size, 20, 30, 110, 'rgba(255,255,240,0.05)');
+    scatterBlotches(context, size, 20, 30, 110, 'rgba(20,24,16,0.12)');
+    speckle(context, size, 3500, 0.05);
+    drips(context, size, 26, 'rgba(38,32,18,0.22)');
+    // Cat mengelupas.
+    for (let i = 0; i < 10; i += 1) {
+      const x = Math.random() * size;
       const y = Math.random() * size;
-      context.fillRect(0, y, size, 6 + Math.random() * 22);
-    }
-    context.fillStyle = 'rgba(0,0,0,0.1)';
-    for (let i = 0; i < 12; i += 1) {
+      context.fillStyle = 'rgba(30,30,26,0.35)';
       context.beginPath();
-      context.arc(Math.random() * size, Math.random() * size, 8 + Math.random() * 18, 0, Math.PI * 2);
+      const rx = 4 + Math.random() * 14;
+      const ry = 2 + Math.random() * 8;
+      context.ellipse(x, y, rx, ry, Math.random() * Math.PI, 0, Math.PI * 2);
       context.fill();
     }
   },
   ceiling(context, size) {
-    context.fillStyle = '#202226';
+    context.fillStyle = '#55575a';
     context.fillRect(0, 0, size, size);
-    speckle(context, size, 1000, 0.07);
-    context.fillStyle = 'rgba(0,0,0,0.22)';
-    for (let i = 0; i < 8; i += 1) {
-      const y = Math.random() * size;
-      context.fillRect(0, y, size, 4 + Math.random() * 10);
-    }
+    speckle(context, size, 2000, 0.06);
+    scatterBlotches(context, size, 14, 30, 90, 'rgba(48,36,16,0.25)');
+    // Panel plafon.
+    context.strokeStyle = 'rgba(0,0,0,0.5)';
+    context.lineWidth = 3;
+    context.strokeRect(0, 0, size, size);
+    context.beginPath();
+    context.moveTo(size / 2, 0);
+    context.lineTo(size / 2, size);
+    context.moveTo(0, size / 2);
+    context.lineTo(size, size / 2);
+    context.stroke();
   },
   asphalt(context, size) {
-    context.fillStyle = '#141414';
+    context.fillStyle = '#161616';
     context.fillRect(0, 0, size, size);
-    speckle(context, size, 2000, 0.08);
-    context.strokeStyle = 'rgba(0,0,0,0.45)';
+    speckle(context, size, 6000, 0.07);
+    scatterBlotches(context, size, 10, 40, 120, 'rgba(0,0,0,0.3)');
+    context.strokeStyle = 'rgba(0,0,0,0.5)';
     context.lineWidth = 2;
     for (let i = 0; i < 6; i += 1) {
       context.beginPath();
@@ -95,25 +157,29 @@ const textureGenerators = {
 const createMaterials = () => {
   const standard = (color, options = {}) =>
     new THREE.MeshStandardMaterial({ color, roughness: 0.92, metalness: 0.04, ...options });
-  const textured = (color, generator, repeat, options = {}) => {
-    const material = standard(color, options);
-    material.map = makeCanvasTexture(512, generator, repeat);
+  const textured = (color, generator, worldSize, options = {}) => {
+    const { resolution = 1024, bump = 1.2, ...rest } = options;
+    const material = standard(color, rest);
+    material.map = makeCanvasTexture(resolution, generator, worldSize);
+    material.bumpMap = material.map;
+    material.bumpScale = bump;
+    material.userData.worldUv = true;
     return material;
   };
   return {
-    asphalt: textured(0x191919, textureGenerators.asphalt, 6),
+    asphalt: textured(0x191919, textureGenerators.asphalt, 4, { resolution: 512 }),
     battery: standard(0x2f6b9a, { emissive: 0x06263a, roughness: 0.5, metalness: 0.4 }),
     bedSheet: standard(0xb8b0a0, { roughness: 0.95 }),
     blood: standard(0x4b0505, { roughness: 0.6 }),
     chair: standard(0x8c8577, { roughness: 0.85 }),
-    ceiling: textured(0x25272a, textureGenerators.ceiling, 6),
-    concrete: standard(0x585a54, { map: makeCanvasTexture(512, textureGenerators.wall, 8) }),
+    ceiling: textured(0x6a6c70, textureGenerators.ceiling, 2.4, { resolution: 512 }),
+    concrete: textured(0x585a54, textureGenerators.wall, 3, { resolution: 512 }),
     desk: standard(0x4c3326, { roughness: 0.8, metalness: 0.1 }),
     dirt: standard(0x2d211c, { roughness: 1 }),
     door: standard(0x5a1715, { roughness: 0.7, metalness: 0.15 }),
     doorTrim: standard(0x241715, { roughness: 0.8 }),
     glass: standard(0xbfd5d2, { roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.35 }),
-    floor: textured(0x343438, textureGenerators.floor, 8),
+    floor: textured(0x8a8a8e, textureGenerators.floor, 2.4, { roughness: 0.78, bump: 2 }),
     hospitalTube: standard(0xfff4dd, { emissive: 0xffdfaa, emissiveIntensity: 1.4, roughness: 0.35 }),
     key: standard(0xd6a800, { emissive: 0x664400, roughness: 0.4, metalness: 0.7 }),
     lampGlow: standard(0xffd08a, { emissive: 0xff8a2a, emissiveIntensity: 2, roughness: 0.25 }),
@@ -131,22 +197,54 @@ const createMaterials = () => {
     roadBlock: standard(0x8f6b23, { roughness: 0.85 }),
     rust: standard(0x7a3b20, { roughness: 0.8, metalness: 0.4 }),
     tile: standard(0xaab4af, { roughness: 0.72 }),
-    wall: textured(0x7f8978, textureGenerators.wall, 6),
-    wallDark: textured(0x4b5148, (c, s) => textureGenerators.wall(c, s, 0.62), 6),
+    wall: textured(0x7f8978, textureGenerators.wall, 3),
+    wallDark: textured(0x4b5148, (c, s) => textureGenerators.wall(c, s, 0.62), 3),
     window: standard(0x142328, { emissive: 0x05090a, roughness: 0.18, metalness: 0.45 }),
     wood: standard(0x5a3d2e, { roughness: 0.8 }),
   };
 };
 
+// Geometri dengan UV dalam meter supaya tekstur tidak tertarik saat mesh di-scale.
+// Di-cache per ukuran; material tanpa `userData.worldUv` tetap memakai geometri bersama.
+const worldUvCache = new Map();
+const worldUvGeometry = (kind, sx, sy, sz = 1) => {
+  const key = `${kind}:${sx.toFixed(2)}:${sy.toFixed(2)}:${sz.toFixed(2)}`;
+  if (worldUvCache.has(key)) return worldUvCache.get(key);
+  const geometry = kind === 'box' ? new THREE.BoxGeometry(1, 1, 1) : new THREE.PlaneGeometry(1, 1);
+  const uv = geometry.attributes.uv;
+  // Urutan face BoxGeometry: +x, -x, +y, -y, +z, -z (4 vertex per face).
+  const faceSize =
+    kind === 'box'
+      ? [
+          [sz, sy],
+          [sz, sy],
+          [sx, sz],
+          [sx, sz],
+          [sx, sy],
+          [sx, sy],
+        ]
+      : [[sx, sy]];
+  for (let i = 0; i < uv.count; i += 1) {
+    const [u, v] = faceSize[Math.floor(i / 4)];
+    uv.setXY(i, uv.getX(i) * u, uv.getY(i) * v);
+  }
+  worldUvCache.set(key, geometry);
+  return geometry;
+};
+
 const box = (material, position, scale) => {
-  const mesh = new THREE.Mesh(boxGeometry, material);
+  const geometry = material.userData.worldUv ? worldUvGeometry('box', ...scale) : boxGeometry;
+  const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(...position);
   mesh.scale.set(...scale);
   return mesh;
 };
 
 const floorPlane = (material, position, scale) => {
-  const mesh = new THREE.Mesh(planeGeometry, material);
+  const geometry = material.userData.worldUv
+    ? worldUvGeometry('plane', scale[0], scale[1])
+    : planeGeometry;
+  const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(...position);
   mesh.scale.set(...scale);
   mesh.rotation.x = -Math.PI / 2;
@@ -154,7 +252,10 @@ const floorPlane = (material, position, scale) => {
 };
 
 const wallPanel = (material, position, scale) => {
-  const mesh = new THREE.Mesh(planeGeometry, material);
+  const geometry = material.userData.worldUv
+    ? worldUvGeometry('plane', scale[0], scale[1])
+    : planeGeometry;
+  const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(...position);
   mesh.scale.set(...scale, 1);
   return mesh;
@@ -998,8 +1099,8 @@ const createKostRoom = (materials) => {
   interactables.push(tv);
 
   const lampBulbMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    emissive: 0xffffff,
+    color: 0xfff4e0,
+    emissive: 0xffd9a8,
     emissiveIntensity: 0,
     roughness: 0.35,
     metalness: 0.1,
@@ -1011,17 +1112,17 @@ const createKostRoom = (materials) => {
     fixture.add(box(materials.metal, [0, 0.06, 0], [0.04, 0.18, 0.04]));
     fixture.add(box(materials.metal, [0, -0.14, 0], [0.55, 0.1, 0.3]));
     fixture.add(box(lampBulbMaterial, [0, -0.24, 0], [0.36, 0.12, 0.22]));
-    const light = new THREE.PointLight(0xfff1d6, 0, distance, 1);
+    const light = new THREE.PointLight(0xffe2b8, 0, distance, 1);
     light.position.set(0, -0.26, 0);
     light.userData.baseIntensity = intensity;
     fixture.add(light);
     return { fixture, light };
   };
   const roomLamps = [
-    createRoomLamp([3.4, 2.96, 2.8], 2.4, 9),
-    createRoomLamp([3.2, 2.96, -3.7], 2.3, 9),
-    createRoomLamp([-4.2, 2.96, -3], 2.1, 8),
-    createRoomLamp([-4.1, 2.96, 3.5], 2, 8),
+    createRoomLamp([3.4, 2.96, 2.8], 5.2, 11),
+    createRoomLamp([3.2, 2.96, -3.7], 5, 11),
+    createRoomLamp([-4.2, 2.96, -3], 4.4, 10),
+    createRoomLamp([-4.1, 2.96, 3.5], 4.2, 10),
   ];
   group.add(...roomLamps.map(({ fixture }) => fixture));
 
