@@ -24,14 +24,15 @@ Terdapat kekurangan game horror bertema Indonesia yang berkualitas di platform w
 - Rating, ulasan, dan feedback dari pemain.
 - Tingkat penyebaran (share/viralitas) di media sosial.
 
-## 6. Ruang Lingkup MVP (Minimum Viable Product)
-- Terdiri dari 3 chapter cerita yang progresif.
+## 6. Ruang Lingkup MVP (Vertical Slice)
+- Terdiri dari Chapter 1 (Rumah Sakit Tua) sebagai playable demo.
 - Mode Singleplayer only.
 - Basic save system menggunakan IndexedDB.
 - Core horror mechanics: movement, flashlight, stealth, dan inventory sederhana.
 - Rilis awal untuk platform Desktop browser.
 
 ## 7. Ruang Lingkup Pengembangan Lanjut
+- Chapter 2 (Kuburan) dan Chapter 3 (Pedesaan) untuk rilis v1.0.
 - Penambahan chapter baru atau DLC.
 - Mode Endless atau Time Attack.
 - Sistem Achievement dan Leaderboard.
@@ -50,10 +51,11 @@ Terdapat kekurangan game horror bertema Indonesia yang berkualitas di platform w
 - **Game Horror Indonesia Lainnya (seperti DreadOut atau Pamali)**: Ambacong memiliki keunggulan berupa aksesibilitas langsung di browser tanpa instalasi.
 
 ## 10. Model Monetisasi
-- **Fase Awal (MVP)**: Sepenuhnya gratis (Free-to-Play) untuk membangun basis pemain.
+- **Fase Awal (Vertical Slice)**: Sepenuhnya gratis (Free-to-Play) untuk membangun basis pemain.
 - **Fase Monetisasi**: Implementasi iklan yang tidak mengganggu, donasi, atau akses berbayar untuk premium chapter/konten kosmetik.
 
 ## 11. Timeline Rencana
-- **Fase MVP (3 Bulan)**: Core gameplay, AI pocong, level design untuk 3 chapter, dan basic UI.
+- **Fase Vertical Slice (3 Bulan)**: Core gameplay, AI pocong, level design Chapter 1, dan basic UI.
+- **Fase Konten v1.0**: Chapter 2, Chapter 3, multiple pocong, boss, dan ending.
 - **Fase Polish (1 Bulan)**: Audio balancing, bug fixing, optimasi performa, dan visual enhancement.
 - **Fase Launch & Feedback (1 Bulan)**: Rilis versi 1.0, marketing, dan iterasi berdasarkan feedback pemain.

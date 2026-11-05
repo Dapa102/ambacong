@@ -2,24 +2,24 @@
 
 ## 1. Daftar Fitur (Prioritas MoSCoW)
 
-### Must Have (MVP)
+### Must Have (Vertical Slice)
 - **First-person movement**: Mendukung kontrol WASD dan mouse look.
-- **Pocong AI**: State machine dasar (patrol, detect, chase).
-- **3 Chapter Cerita**: Lingkungan yang progresif.
+- **Pocong AI**: State machine dasar (idle, patrol, alert, chase, attack, lost).
+- **Chapter 1**: Rumah Sakit Tua sebagai playable demo 15-20 menit.
+- **Hiding System**: Hiding spot membuat pemain tidak terdeteksi dan pocong kehilangan target.
 - **Flashlight dengan battery system**: Senter sebagai sumber cahaya yang bisa habis baterainya.
 - **Stamina System**: Pemain hanya bisa berlari (sprint) dalam durasi terbatas.
 - **Inventory System**: Slot terbatas (maksimal 6 item) untuk menyimpan kunci atau item puzzle.
 - **Save/Load System**: Menggunakan IndexedDB, menyediakan 3 save slots.
 - **Health System**: Pemain akan Game Over jika terkena serangan 3 kali.
 - **Pause Menu & Settings**: Opsi dasar untuk melanjutkan, menyimpan, dan keluar.
-- **Loading Screen**: Transisi antar chapter.
+- **Loading Screen**: Pemuatan awal dan area Chapter 1.
 
 ### Should Have
 - **Jump Scares**: Event ter-script di titik-titik tertentu.
 - **Environmental Storytelling**: Catatan, dokumen, atau petunjuk visual (clues).
-- **Multiple Ending**: 2-3 variasi ending berdasarkan pilihan atau keberhasilan pemain.
 - **Sound Settings**: Kontrol volume (Master, SFX, BGM).
-- **Tutorial/Intro Chapter**: Bagian awal yang mengajarkan mekanik dasar.
+- **Tutorial Chapter 1**: Onboarding singkat yang mengajarkan mekanik dasar.
 
 ### Could Have
 - **Achievement System**: Pencapaian untuk aksi tertentu.
@@ -27,7 +27,9 @@
 - **Accessibility Options**: Subtitle, penyesuaian brightness.
 - **Statistics**: Mencatat waktu bermain dan persentase item ditemukan.
 
-### Won't Have (MVP)
+### Won't Have (Vertical Slice)
+- Chapter 2 dan Chapter 3 (target rilis v1.0)
+- Multiple ending (target rilis v1.0)
 - Multiplayer / Co-op
 - VR Support
 - Mobile Support (touch controls)
@@ -125,11 +127,11 @@
 
 | Aspek | Requirement |
 |-------|-------------|
-| Performance | Target 60 FPS pada spesifikasi mid-range device |
-| Loading Time | Maksimal 10 detik per pergantian chapter atau initial load |
-| Browser Support | Chrome 90+, Firefox 88+, Edge 90+ |
+| Performance | 60 FPS preferred, rata-rata >= 45 FPS, 1% low >= 30 FPS pada profil uji di `rules.md` |
+| Loading Time | Cold initial load < 10 detik dan blocking area load < 5 detik pada koneksi 10 Mbps |
+| Browser Support | Chrome 111+, Firefox 114+, Edge 111+, Safari 16.4+ |
 | Memory | Penggunaan RAM di bawah 512MB |
-| Storage | Total ukuran assets di bawah 100MB |
-| Responsiveness | Input latency < 16ms |
+| Storage | Vertical slice < 30MB, rilis v1.0 < 100MB, critical initial transfer maksimal 8MB compressed |
+| Responsiveness | Tidak ada input lag yang terlihat selama profil uji performa |
 | Accessibility | Pointer Lock API, fullscreen mode |
 | Save Data | Persistent via IndexedDB, 3 save slots |

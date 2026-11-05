@@ -1,5 +1,7 @@
 # Dokumen Skema Data - Ambacong
 
+Implementasikan hanya schema yang dibutuhkan vertical slice Chapter 1. Schema untuk chapter atau fitur lanjutan menjadi referensi sampai fitur masuk scope rilis.
+
 ## 1. Game State Schema
 
 Skema ini menyimpan status permainan saat ini, termasuk posisi pemain, health, item yang dikumpulkan, dan progres chapter.
@@ -26,14 +28,13 @@ interface GameState {
   collectedItems: string[];         // ID semua item yang pernah diambil
   triggeredEvents: string[];        // ID event one-shot yang sudah terjadi
   playTime: number;                 // Total waktu bermain dalam detik
-  difficulty: 'normal' | 'hard';    // Tingkat kesulitan
   timestamp: number;                // Unix timestamp saat save
 }
 ```
 
 ## 2. Save Data Schema (IndexedDB)
 
-Struktur database IndexedDB untuk menyimpan progres, pengaturan, dan achievement di sisi klien.
+Struktur database IndexedDB untuk menyimpan progres dan pengaturan di sisi klien.
 
 ```typescript
 // Nama Database: 'ambacong_db'
@@ -43,9 +44,9 @@ Struktur database IndexedDB untuk menyimpan progres, pengaturan, dan achievement
 // keyPath: 'slot'
 interface SaveSlot {
   slot: number;                     // 1, 2, atau 3
+  schemaVersion: number;            // Versi format SaveSlot, mulai dari 1
   gameState: GameState;             // Data state permainan
   chapterName: string;              // Nama chapter saat save (untuk tampilan)
-  screenshotDataUrl?: string;       // Screenshot base64 saat save (opsional)
   createdAt: number;                // Unix timestamp pertama kali dibuat
   updatedAt: number;                // Unix timestamp terakhir di-update
 }
@@ -57,12 +58,6 @@ interface SettingsStore {
   settings: SettingsSchema;
 }
 
-// === Object Store: 'achievements' ===
-// keyPath: 'id'
-interface AchievementStore {
-  id: string;                       // ID achievement (misal: 'survive_first_encounter')
-  unlockedAt: number;               // Unix timestamp saat didapatkan
-}
 ```
 
 ### Operasi IndexedDB
@@ -84,10 +79,6 @@ dbRequest.onupgradeneeded = (event) => {
     db.createObjectStore('settings', { keyPath: 'id' });
   }
 
-  // Object store untuk achievements
-  if (!db.objectStoreNames.contains('achievements')) {
-    db.createObjectStore('achievements', { keyPath: 'id' });
-  }
 };
 ```
 
@@ -124,7 +115,6 @@ interface SceneData {
       id: string;
       position: { x: number; y: number; z: number };
       patrolRoute: Array<{ x: number; z: number }>;
-      variant: 'normal' | 'boss';
     }>;
     items: Array<{
       itemId: string;               // Referensi ke InventoryItem.id
@@ -214,7 +204,6 @@ interface PlayerEntity extends BaseEntity {
 
 // === Pocong Entity ===
 interface PocongEntity extends BaseEntity {
-  variant: 'normal' | 'boss';
   state: PocongState;
   patrolRoute: Array<{ x: number; z: number }>;
   currentWaypointIndex: number;
@@ -234,7 +223,7 @@ interface PocongEntity extends BaseEntity {
   lastKnownPlayerPosition?: { x: number; z: number };
 }
 
-type PocongState = 'idle' | 'patrol' | 'alert' | 'chase' | 'attack' | 'lost' | 'peek';
+type PocongState = 'idle' | 'patrol' | 'alert' | 'chase' | 'attack' | 'lost';
 
 // === Interactable Entity ===
 interface InteractableEntity extends BaseEntity {

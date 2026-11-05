@@ -1,25 +1,10 @@
 import { defineConfig } from 'vite';
-import path from 'path';
+import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
-  root: './',
-  publicDir: 'public',
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-  build: {
-    outDir: 'dist',
-    assetsDir: 'assets',
-    sourcemap: false,
-    minify: 'terser',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          three: ['three'],
-        },
-      },
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   server: {

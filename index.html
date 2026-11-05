@@ -1,34 +1,129 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ambacong</title>
+    <title>Ambacong — Terror Pocong Merah</title>
     <link rel="stylesheet" href="/src/styles/main.css" />
   </head>
   <body>
-    <div id="app">
-      <!-- Game Canvas akan di-inject ke sini oleh Three.js -->
-    </div>
-    
-    <!-- UI Overlay Base -->
-    <div id="ui-layer" style="display: none;">
-      <div id="crosshair"></div>
-      
-      <!-- HUD Utama -->
-      <div id="hud-container">
-        <div id="health-bar-container">
-          <div id="health-bar" style="width: 100%;"></div>
+    <div id="app"></div>
+    <div id="vignette"></div>
+
+    <div id="ui-layer">
+      <div id="hud">
+        <div id="crosshair"></div>
+        <p id="objective" role="status"></p>
+        <p id="interaction-prompt"></p>
+        <div id="status-stack">
+          <p id="flashlight-status" role="status"></p>
+          <p id="stamina-status"></p>
+          <p id="hidden-status"></p>
         </div>
-        <div id="stamina-bar-container">
-          <div id="stamina-bar" style="width: 100%;"></div>
-        </div>
-        <div id="flashlight-indicator">🔋 100%</div>
+        <div id="inventory-quick" role="status"></div>
+        <div id="objective-toast"></div>
+        <p id="map-hint">[M] Peta</p>
       </div>
-      
-      <div id="interaction-prompt" style="display: none;">Tekan E untuk...</div>
+
+      <div id="menu-screen">
+        <div id="menu-inner">
+          <img id="menu-image" src="assets/ambacong.png" alt="Pocong Merah" />
+          <h1 id="menu-title">AMBACONG<br /><span>TERROR POCONG MERAH</span></h1>
+          <div id="menu-buttons">
+            <button id="continue-button" type="button">Continue</button>
+            <button id="new-game-button" type="button">New Game</button>
+            <button id="chapters-button" type="button">Pilih Chapter</button>
+            <button id="exit-button" type="button">Exit</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="chapter-select-screen" hidden>
+        <h2>PILIH CHAPTER</h2>
+        <div id="chapter-list">
+          <button class="chapter-item" data-chapter="1" type="button">
+            <span class="chapter-num">1</span>
+            <span class="chapter-name">Rumah Sakit Tua</span>
+            <span class="chapter-status">Tersedia</span>
+          </button>
+          <button class="chapter-item disabled" data-chapter="2" type="button" disabled>
+            <span class="chapter-num">2</span>
+            <span class="chapter-name">Kuburan</span>
+            <span class="chapter-status">Coming Soon</span>
+          </button>
+          <button class="chapter-item disabled" data-chapter="3" type="button" disabled>
+            <span class="chapter-num">3</span>
+            <span class="chapter-name">Pedesaan</span>
+            <span class="chapter-status">Coming Soon</span>
+          </button>
+        </div>
+        <button id="back-to-menu-button" type="button">Kembali</button>
+      </div>
+
+      <div id="pause-screen" hidden>
+        <h2>PAUSE</h2>
+        <button id="resume-button" type="button">Lanjutkan</button>
+        <button id="save-button" type="button">Simpan</button>
+        <button id="pause-exit-button" type="button">Keluar ke Menu</button>
+      </div>
+
+      <div id="dialog-screen" hidden>
+        <div id="dialog-box">
+          <p id="dialog-speaker"></p>
+          <p id="dialog-text"></p>
+          <p id="dialog-hint">[Enter] atau klik untuk lanjut</p>
+        </div>
+      </div>
+
+      <div id="news-screen" hidden>
+        <div id="news-box">
+          <p id="news-tag">BERITA HOROR</p>
+          <h2 id="news-title"></h2>
+          <p id="news-body"></p>
+          <button id="news-close-button" type="button">Tutup</button>
+        </div>
+      </div>
+
+      <div id="note-screen" hidden>
+        <div id="note-box">
+          <h3 id="note-title"></h3>
+          <p id="note-body"></p>
+          <button id="note-close-button" type="button">Tutup</button>
+        </div>
+      </div>
+
+      <div id="inventory-screen" hidden>
+        <h2>INVENTORY</h2>
+        <div id="inventory-grid"></div>
+        <div id="inventory-detail"></div>
+        <p id="inventory-hint">Pilih item lalu [Enter] untuk pakai. [Tab] untuk menutup.</p>
+      </div>
+
+      <div id="map-screen" hidden>
+        <h2 id="map-title">PETA RUMAH SAKIT</h2>
+        <canvas id="map-canvas"></canvas>
+        <p id="map-legend">Merah = ruang aktif · Emas = kunci · Biru = tangga · Hijau = keluar</p>
+        <p id="map-hint-close">[M] tutup peta</p>
+      </div>
+
+      <div id="gameover-screen" hidden>
+        <h2>KAMU TERTANGKAP</h2>
+        <p id="gameover-text"></p>
+        <button id="retry-button" type="button">Coba Lagi</button>
+        <button id="gameover-menu-button" type="button">Ke Menu</button>
+      </div>
+
+      <div id="complete-screen" hidden>
+        <h2>CHAPTER 1 SELESAI</h2>
+        <p id="complete-text"></p>
+        <button id="complete-menu-button" type="button">Kembali ke Menu</button>
+      </div>
+
+      <div id="loading-screen" hidden>
+        <p id="loading-text">Memuat...</p>
+      </div>
     </div>
-    
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

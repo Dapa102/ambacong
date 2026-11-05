@@ -2,7 +2,7 @@
 
 Dokumen ini merangkum kebutuhan dan transisi jika Ambacong dipindahkan dari Web Browser (Three.js) ke Dedicated Game Engine (Unity, Unreal Engine, atau Godot) di masa depan.
 
-**Penting:** Saat ini, fokus utama adalah MVP berbasis Web Browser. Dokumen ini hanya sebagai pedoman arsitektur agar perpindahan nantinya lebih mudah.
+**Penting:** Saat ini, fokus utama adalah vertical slice Chapter 1 berbasis Web Browser. Dokumen ini hanya sebagai pedoman arsitektur agar perpindahan nantinya lebih mudah.
 
 ## 1. Kenapa Migrasi ke Engine?
 - **Performa Visual**: Dukungan lighting realistis (Global Illumination, Raytracing).

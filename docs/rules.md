@@ -5,7 +5,7 @@
 - **Bahasa**: JavaScript (ESNext) dengan ES Modules
 - **Strict Mode**: Semua file harus menggunakan `'use strict'` atau ES Modules (otomatis strict)
 - **Deklarasi variabel**: Gunakan `const` secara default, `let` jika perlu reassign. **Dilarang** menggunakan `var`
-- **Formatting**: Gunakan Prettier dengan konfigurasi default (2 space indent, single quote, semicolons)
+- **Formatting**: Gunakan Prettier dengan konfigurasi project (2 space indent, single quote, semicolons)
 - **Linting**: ESLint dengan aturan recommended + aturan custom project
 - **Async**: Gunakan `async/await` daripada callback chains atau `.then()` chains panjang
 - **Error Handling**: Semua operasi async harus memiliki `try/catch`. Tidak boleh ada error yang diabaikan tanpa logging
@@ -33,8 +33,7 @@ ambacong/
 │   ├── prd.md
 │   ├── design.md
 │   └── schema.md
-├── public/                # File statis (favicon, index.html)
-│   └── index.html
+├── public/                # File statis yang disalin apa adanya
 ├── src/                   # Source code utama
 │   ├── main.js            # Entry point
 │   ├── core/              # Sistem inti
@@ -85,9 +84,11 @@ ambacong/
 │   │   └── music/
 │   └── fonts/             # Web fonts
 ├── vite.config.js         # Konfigurasi Vite
+├── index.html             # Entry HTML Vite
 ├── package.json
-├── .eslintrc.json
+├── eslint.config.js
 ├── .prettierrc
+├── .nvmrc
 └── .gitignore
 ```
 
@@ -167,14 +168,18 @@ asset(models): tambah model pocong chapter 1
 
 | Metrik | Target |
 |--------|--------|
-| FPS | 60 FPS stabil (minimum 30 FPS) |
+| FPS | 60 preferred, rata-rata >= 45 FPS, 1% low >= 30 FPS |
 | Draw Calls | Maksimal 100 per frame |
 | Texture Memory | Maksimal 128MB |
 | Geometry Memory | Maksimal 64MB |
-| Total Asset Size | Maksimal 100MB |
-| Initial Load Time | < 10 detik (koneksi 10Mbps) |
-| Chapter Load Time | < 5 detik |
+| Vertical Slice Asset Transfer | Maksimal 30MB compressed |
+| Total Asset Transfer | Maksimal 100MB compressed |
+| Critical Initial Transfer | Maksimal 8MB compressed |
+| Initial Load Time | < 10 detik pada cold cache dan koneksi 10 Mbps |
+| Blocking Area Load | Maksimal 4MB compressed dan < 5 detik pada koneksi 10 Mbps |
 | RAM Usage | < 512MB |
+
+**Profil uji:** 1920x1080, quality preset `medium`, Chrome versi terbaru, CPU 4-core, RAM 8GB, dan integrated GPU dengan WebGL 2. Catat model CPU/GPU pada setiap laporan benchmark. Kunci satu perangkat referensi setelah benchmark vertical slice pertama.
 
 ### Aturan Optimasi
 - Gunakan instanced rendering untuk objek berulang (nisan, pohon, dll)
@@ -188,10 +193,10 @@ asset(models): tambah model pocong chapter 1
 
 | Browser | Versi Minimum |
 |---------|---------------|
-| Google Chrome | 90+ |
-| Mozilla Firefox | 88+ |
-| Microsoft Edge | 90+ |
-| Safari | 15+ |
+| Google Chrome | 111+ |
+| Mozilla Firefox | 114+ |
+| Microsoft Edge | 111+ |
+| Safari | 16.4+ |
 
 ### Syarat Teknis Browser
 - WebGL 2.0 support
@@ -208,7 +213,8 @@ asset(models): tambah model pocong chapter 1
   - `three` — 3D rendering engine
   - `vite` — bundler & dev server (dev dependency)
 - **Dilarang** menambahkan framework UI (React, Vue, dll) — gunakan vanilla DOM manipulation
-- Lock versi dependency di `package.json` (gunakan exact version)
+- Commit `package-lock.json` dan gunakan `npm ci` untuk instalasi reproducible
+- Upgrade dependency dilakukan secara sadar melalui pull request terpisah
 
 ## 10. Testing
 
@@ -232,7 +238,7 @@ asset(models): tambah model pocong chapter 1
 ### Performance Testing
 - Uji di Chrome DevTools Performance tab
 - Monitor memory usage (tidak boleh terus naik / memory leak)
-- Test di hardware mid-range (GPU integrated)
+- Gunakan profil uji dan perangkat referensi dari Performance Budget
 
 ## 11. Dokumentasi
 
