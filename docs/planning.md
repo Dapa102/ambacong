@@ -35,6 +35,10 @@ Alasannya: alur Chapter 1 sudah lengkap dan tertest (36 cek runtime), tapi loop 
 - Main manual: jalan pelan melewati pocong yang membelakangi aman, sprint memancing dia datang.
 - Runtime test 36/36 tetap lolos.
 
+### V1. Kualitas visual 3D — `feature/visual-quality`
+
+- [x] Status: selesai 5 November 2026 (di luar urutan awal, atas permintaan maintainer). Lihat [progress.md](progress.md).
+
 ### F2. Health 3 HP & efek damage — `feature/health-system`
 
 - [ ] Status

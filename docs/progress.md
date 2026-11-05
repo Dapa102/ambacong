@@ -167,3 +167,13 @@ Perintah: `npm test`, `npm run test:runtime`, `npm run lint`, `npm run format:ch
 - **Fix sembunyi saat dikejar**: dulu pocong berdiri di depan loker tanpa batas waktu. Sekarang ia langsung masuk `lost`, mencari di posisi terakhir, lalu pergi.
 - Hook DEV baru: `window.__ambacong.pocongState()`.
 - Verifikasi: unit 22/22 (6 test baru), lint lolos, build lolos, runtime 36/36.
+
+## V1 Kualitas Visual 3D (5 November 2026)
+
+- **Post-processing** (`src/systems/post-processing.js`, addon bawaan `three`): bloom untuk neon, bohlam, dan mata pocong; film grain bergerak; chromatic aberration tipis di tepi layar; color grading dingin (saturasi 85%, bayangan kebiruan). Anti-aliasing pindah ke MSAA 4× di render target.
+- **Fix tekstur tertarik**: semua dinding/lantai memakai satu `BoxGeometry` 1×1×1 yang di-scale, jadi tekstur ikut melar (garis horizontal di dinding). Sekarang material bertekstur memakai geometri dengan UV dalam meter (`worldUvGeometry`, di-cache per ukuran), sehingga skala tekstur sama di semua permukaan.
+- **Tekstur prosedural baru** (1024px untuk dinding/lantai): dinding dengan bercak, rembesan air vertikal, dan cat mengelupas; lantai ubin dengan variasi warna per ubin, noda, retak, dan nat; plafon berpanel. Semua material bertekstur memakai bump map dari tekstur yang sama.
+- **Fix lantai hitam**: warna material gelap dikali tekstur gelap membuat lantai nyaris hitam walau disenter. Nada sekarang diatur dari tekstur.
+- **Lampu kost** lebih terang dan hangat (intensitas ~2×, jangkauan 10–11). Exposure 1.15 → 1.3.
+- **Preset kualitas**: renderer software otomatis memakai preset ringan (tanpa bloom, MSAA, dan shadow). Override lewat URL: `?quality=high` atau `?quality=low`.
+- Bundle JS 608 → 632 KB. Verifikasi: unit 22/22, lint lolos, build lolos, runtime 36/36.
