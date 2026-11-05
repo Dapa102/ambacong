@@ -43,3 +43,48 @@ test('visual detection honors crouching, walls, and flashlight range', () => {
   pocong.colliders = [];
   assert.equal(pocong.canSee(player, { playerFlashlightOn: true, aimingPocong: true }, 13), true);
 });
+
+const calmPlayer = (z) => ({
+  hidden: false,
+  crouching: false,
+  sprinting: false,
+  position: new THREE.Vector3(0, 0, z),
+});
+const darkInfo = { playerFlashlightOn: false, aimingPocong: false };
+
+test('sprinting behind pocong is heard, not seen: it investigates instead of chasing', () => {
+  const pocong = new Pocong(new THREE.Object3D(), []);
+  pocong.setPatrol([[0, -20]]);
+  pocong.wake();
+  const player = { ...calmPlayer(6), sprinting: true };
+
+  assert.equal(pocong.canSee(player, darkInfo, 13), false);
+  assert.equal(pocong.hear(player.position, 10), true);
+  assert.equal(pocong.state, 'investigate');
+
+  pocong.update(0.5, player, darkInfo);
+  assert.ok(pocong.mesh.position.z > 0, 'moves toward the noise');
+});
+
+test('investigation gives up and returns to patrol', () => {
+  const pocong = new Pocong(new THREE.Object3D(), []);
+  pocong.setPatrol([[0, -20]]);
+  pocong.wake();
+  pocong.hear({ x: 0, z: 1 }, 5);
+  const player = calmPlayer(30);
+
+  for (let i = 0; i < 60; i += 1) pocong.update(0.25, player, darkInfo);
+  assert.equal(pocong.state, 'patrol');
+});
+
+test('hiding during a chase makes pocong lose the target', () => {
+  const pocong = new Pocong(new THREE.Object3D(), []);
+  pocong.wake();
+  const player = calmPlayer(-5);
+  pocong.startChase(player);
+
+  player.hidden = true;
+  pocong.update(0.1, player, darkInfo);
+  assert.equal(pocong.state, 'lost');
+  assert.equal(pocong.isAttacking(player), false);
+});

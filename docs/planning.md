@@ -18,7 +18,7 @@ Alasannya: alur Chapter 1 sudah lengkap dan tertest (36 cek runtime), tapi loop 
 
 ### F1. Pendengaran & investigasi pocong — `feature/pocong-hearing`
 
-- [ ] Status
+- [x] Status: selesai 5 November 2026 (lihat [progress.md](progress.md)). Suara aksi pintu belum ditambahkan karena pintu interaktif hanya ada di kost, sedangkan pocong tidak aktif di sana.
 
 **Kondisi sekarang:** di [pocong.js](../src/entities/pocong.js) `canSee()`, pemain yang sprint dalam radius 9 atau crouch dalam radius 4 langsung memicu chase. Tidak ada tahap curiga.
 
@@ -142,6 +142,6 @@ Alur Chapter 1 di [prd.md](prd.md) masih menyebut pemain "terbangun di rumah sak
 
 ## Keputusan yang Perlu dari Maintainer
 
-1. **Aset audio** (jumpscare, ambience, langkah): dibuat atau dicari sendiri, atau sementara pakai placeholder sintetis Web Audio?
-2. **Form feedback** untuk R1: Google Form, Tally, atau komentar itch.io saja?
+1. **Aset audio:** ~~dibuat sendiri atau placeholder?~~ Diputuskan: pakai aset yang sudah ada di `assets/audio/`. Agent boleh menambah suara sintetis Web Audio kalau ada yang kurang.
+2. **Form feedback:** ~~Google Form, Tally, atau itch.io?~~ Diputuskan: dibuat belakangan, di akhir R1.
 3. **Urutan:** usulannya F1 → F2 → F3 → F4 → F5 → F6. F4 bisa didahulukan kalau aset audio sudah siap.
