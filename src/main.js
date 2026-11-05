@@ -6,6 +6,7 @@ import { StateMachine } from './core/state-machine.js';
 import { SaveSystem, SAVE_SLOT } from './systems/save-system.js';
 import { AudioSystem } from './systems/audio-system.js';
 import { buildColliders } from './systems/collision-system.js';
+import { NOISE, movementNoise } from './systems/noise-system.js';
 import { InventorySystem, ITEM_CATALOG } from './systems/inventory-system.js';
 import { Player } from './entities/player.js';
 import { Pocong } from './entities/pocong.js';
@@ -360,6 +361,10 @@ const updateGhostAudio = () => {
   audio.setLoopVolume('ghostNear', volume);
 };
 
+const makeNoise = (radius) => {
+  if (pocongWoken && hospitalVisible) pocong.hear(player.position, radius);
+};
+
 const playerInfo = () => ({
   playerFlashlightOn: flashlightOn,
   aimingPocong: aimingAtPocong(),
@@ -637,6 +642,7 @@ const pickItem = async (item) => {
   collectedItems.add(keyRef);
   item.group.visible = false;
   audio.play('pickup');
+  makeNoise(NOISE.pickup);
   if (target.itemId === 'battery') {
     showDialog([
       {
@@ -679,6 +685,7 @@ const hideIn = (target) => {
       ? new THREE.Vector3(0, 0.38, 1.0)
       : new THREE.Vector3(0, 0.22, 1.05);
   player.hiddenCam = spot.clone().add(offset);
+  makeNoise(NOISE.hide);
   player.enterHide(target.data.hideName ?? 'spot');
   hud.setHidden(`Diam! Kamu ngumpet di ${target.data.hideName}. [E] untuk keluar.`);
 };
@@ -1089,6 +1096,7 @@ const update = (delta) => {
   }
 
   if (pocongWoken && hospitalVisible) {
+    pocong.hear(player.position, movementNoise(player));
     pocong.update(delta, player, playerInfo());
     if (pocong.isAttacking(player)) {
       triggerGameOver();
@@ -1190,6 +1198,7 @@ const bootstrap = async () => {
       hidden: () => player.hidden,
       doorOpen: (id) => openedDoors.has(id),
       pocongVisible: () => enemy.visible,
+      pocongState: () => pocong.state,
       dialogOpen: () => overlays.isDialogOpen(),
       newsOpen: () => !document.getElementById('news-screen').hidden,
       completeOpen: () => !document.getElementById('complete-screen').hidden,

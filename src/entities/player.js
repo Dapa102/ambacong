@@ -11,6 +11,7 @@ export class Player {
     this.stamina = 100;
     this.sprinting = false;
     this.crouching = false;
+    this.moving = false;
     this.hidden = false;
     this.hiddenSpot = null;
     this.radius = 0.34;
@@ -25,6 +26,7 @@ export class Player {
   move(delta, keys, colliders, bounds) {
     if (this.hidden) {
       this.sprinting = false;
+      this.moving = false;
       return;
     }
     this.crouching = keys.has('ControlLeft') || keys.has('ControlRight');
@@ -41,6 +43,7 @@ export class Player {
     const dirX = -sin * forward + cos * strafe;
     const dirZ = -cos * forward - sin * strafe;
     const length = Math.hypot(dirX, dirZ);
+    this.moving = length > 0;
     if (length > 0) {
       this.position.x += (dirX / length) * speed * delta;
       this.position.z += (dirZ / length) * speed * delta;

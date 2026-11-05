@@ -1,16 +1,20 @@
 import * as THREE from 'three';
 import { moveToward } from '../chase.js';
 import { hasLineOfSight, resolveCircle } from '../systems/collision-system.js';
+import { isAudible } from '../systems/noise-system.js';
 
 const SIGHT_RANGE = 13;
 const SIGHT_RANGE_LIT = 18;
-const SOUND_RANGE = 9;
 const SIGHT_CONE = Math.cos((58 * Math.PI) / 180);
 const CHASE_SPEED = 3.8;
 const PATROL_SPEED = 1.7;
+const INVESTIGATE_SPEED = 2.4;
 const ATTACK_DISTANCE = 2.0;
 const LOST_DURATION = 7;
+const INVESTIGATE_DURATION = 9;
+const LOOK_AROUND_SPEED = 1.6;
 const CHASE_LINGER = 16;
+const CALM_STATES = new Set(['idle', 'patrol', 'lost', 'investigate']);
 
 export class Pocong {
   constructor(mesh, colliders) {
@@ -27,6 +31,7 @@ export class Pocong {
     this.basePosition = mesh.position.clone();
     this.lastStepPhase = 0;
     this.onStep = null;
+    this.lookBase = null;
   }
 
   setPatrol(points) {
@@ -54,8 +59,6 @@ export class Pocong {
     const distance = this.distanceTo(player.position);
     const sightRange = info.playerFlashlightOn && info.aimingPocong ? SIGHT_RANGE_LIT : range;
     if (distance > sightRange) return false;
-    if (player.sprinting && distance <= SOUND_RANGE) return true;
-    if (player.crouching && distance < 4) return true;
     if (!hasLineOfSight(this.mesh.position, player.position, this.colliders)) return false;
     const toPlayer = new THREE.Vector3()
       .subVectors(player.position, this.mesh.position)
@@ -65,6 +68,28 @@ export class Pocong {
     if (facing.lengthSq() < 1e-6) return true;
     facing.normalize();
     return toPlayer.dot(facing) > SIGHT_CONE;
+  }
+
+  /**
+   * Pocong mendengar suara. Saat tidak sedang mengejar, ia datang memeriksa sumbernya.
+   * @param {{x: number, z: number}} point - Posisi sumber suara
+   * @param {number} radius - Radius suara (lihat NOISE di noise-system.js)
+   * @returns {boolean} true jika suara terdengar dan memicu investigasi
+   */
+  hear(point, radius) {
+    if (this.state === 'dormant') return false;
+    if (!isAudible(point, this.mesh.position, radius, this.colliders)) return false;
+    if (this.state === 'chase') {
+      // Masih mendengar buruannya: pengejaran belum berakhir.
+      this.timer = 0;
+      return true;
+    }
+    if (!CALM_STATES.has(this.state)) return false;
+    this.state = 'investigate';
+    this.timer = 0;
+    this.lookBase = null;
+    this.lastKnown = new THREE.Vector3(point.x, 0, point.z);
+    return true;
   }
 
   lookAtPlayer(player) {
@@ -90,6 +115,11 @@ export class Pocong {
         if (remaining === 0) this.patrolIndex = (this.patrolIndex + 1) % this.patrolPoints.length;
       }
       this.checkDetect(player, info);
+    } else if (this.state === 'chase' && player.hidden) {
+      // Pemain sembunyi: pocong hanya tahu posisi terakhir, lalu mencari di sana.
+      this.state = 'lost';
+      this.timer = 0;
+      this.lookBase = null;
     } else if (this.state === 'chase') {
       this.lastKnown = player.position.clone();
       this.facing.subVectors(player.position, pos).setY(0);
@@ -101,14 +131,24 @@ export class Pocong {
         this.timer = 0;
       }
       if (this.canSee(player, info, SIGHT_RANGE)) this.timer = 0;
-    } else if (this.state === 'lost') {
+    } else if (this.state === 'lost' || this.state === 'investigate') {
+      const investigating = this.state === 'investigate';
       this.timer += delta;
       const anchor = this.lastKnown ?? pos;
-      this.facing.subVectors(anchor, pos).setY(0);
-      const remaining = moveToward(pos, anchor, PATROL_SPEED * delta);
+      const speed = investigating ? INVESTIGATE_SPEED : PATROL_SPEED;
+      const remaining = moveToward(pos, anchor, speed * delta);
       resolveCircle(pos, 0.36, this.colliders);
-      if (remaining === 0) this.timer += delta;
-      if (this.timer > LOST_DURATION) {
+      if (remaining === 0) {
+        this.timer += delta;
+        // Menengok kiri-kanan di titik terakhir, relatif terhadap arah datang.
+        this.lookBase ??= Math.atan2(this.facing.x, this.facing.z);
+        const angle = this.lookBase + Math.sin(this.timer * LOOK_AROUND_SPEED) * (Math.PI / 2);
+        this.facing.set(Math.sin(angle), 0, Math.cos(angle));
+      } else {
+        this.lookBase = null;
+        this.facing.subVectors(anchor, pos).setY(0);
+      }
+      if (this.timer > (investigating ? INVESTIGATE_DURATION : LOST_DURATION)) {
         this.state = this.patrolPoints.length ? 'patrol' : 'idle';
         this.timer = 0;
       }
