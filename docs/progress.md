@@ -158,3 +158,12 @@ Perintah: `npm test`, `npm run test:runtime`, `npm run lint`, `npm run format:ch
   - Pintu samping tidak muncul prompt sebelum pagar diperiksa (`gate-checked`)
   - Prompt hilang total untuk interaksi prematur (tidak ada hint)
 - Semua perubahan tested: lint pass, build 607.6 KB.
+
+## F1 Pendengaran & Investigasi Pocong (5 November 2026)
+
+- **Noise system** (`src/systems/noise-system.js`): radius suara pemain — crouch 1.5, jalan 5, sprint 10, diam/sembunyi 0. Aksi juga bersuara: ambil item 4, masuk tempat sembunyi 6. Dinding di antara sumber dan pocong memotong radius jadi setengah.
+- **Penglihatan dipisah dari pendengaran**: `canSee()` kini murni visual (cone 58° + line of sight + jarak). Jalan pintas lama dihapus (sprint ≤ 9 atau crouch < 4 langsung terdeteksi).
+- **State `investigate`**: pocong yang mendengar suara datang ke sumbernya (2.4/s), menengok kiri-kanan, lalu kembali patrol setelah ±9 detik. Chase hanya terjadi kalau pemain terlihat. Saat chase, suara pemain tetap memperpanjang pengejaran.
+- **Fix sembunyi saat dikejar**: dulu pocong berdiri di depan loker tanpa batas waktu. Sekarang ia langsung masuk `lost`, mencari di posisi terakhir, lalu pergi.
+- Hook DEV baru: `window.__ambacong.pocongState()`.
+- Verifikasi: unit 22/22 (6 test baru), lint lolos, build lolos, runtime 36/36.
